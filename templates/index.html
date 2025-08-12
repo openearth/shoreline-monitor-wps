@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="PyWPS - PyWPS is an implementation of the Web Processing Service standard from the Open Geospatial Consortium. PyWPS is written in Python."
+    />
+    <meta name="keywords" content="PyWPS, PyWPS, WPS, OGC, processing" />
+    <title>{{ title }}</title>
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+      integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
+      crossorigin="anonymous"
+    />
+    <style>
+      /* Tiny helper so the result block looks ok */
+      #executeResult pre {
+        background: #f7f7f7;
+        padding: 10px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main role="main">
+      <div class="jumbotron">
+        <div class="container">
+          <a
+            href="{{ server_url }}?request=GetCapabilities&service=WPS"
+            target="_blank"
+            title="{{ server_url }}?request=GetCapabilities&service=WPS"
+          >
+            <img src="/static/pics/PyWPS-GetCapabilities-brightgreen.svg" />
+          </a>
+
+          <a
+            href="{{ server_url }}?request=DescribeProcess&service=WPS&identifier=all&version=1.0.0"
+            target="_blank"
+            title="Describe all processes"
+          >
+            <img
+              class="ml-1"
+              src="/static/pics/PyWPS-DescribeProcess-green.svg"
+              alt="DescribeProcess"
+            />
+          </a>
+
+          <h1>{{ title }}</h1>
+          <p>Point your WPS client to: <code>{{ server_url }}</code></p>
+        </div>
+      </div>
+
+      <div class="container">
+        <h2>Processes</h2>
+        <p>The following processes are available:</p>
+        <ul class="list-group list-group-flush">
+          {% for name, abstract in process_descriptor.items() %}
+          <li class="list-group-item media">
+            <div class="media-body">
+              <h5 class="mt-0">
+                <!-- Describe -->
+                <a
+                  href="{{ server_url }}?request=DescribeProcess&service=WPS&identifier={{ name }}&version=1.0.0"
+                  target="_blank"
+                  title="Describe {{ name }}"
+                >
+                  <img
+                    class="ml-1"
+                    src="/static/pics/PyWPS-DescribeProcess-green.svg"
+                    alt="DescribeProcess"
+                  />
+                </a>
+
+                <!-- Execute via GET (simple literals) -->
+                <a
+                  href="{{ server_url }}?service=WPS&request=Execute&version=1.0.0&identifier={{ name }}"
+                  target="_blank"
+                  title="Execute {{ name }}"
+                >
+                  <img
+                    class="ml-1"
+                    src="/static/pics/PyWPS-Execute-red.svg"
+                    alt="Execute"
+                  />
+                </a>
+
+                <!-- NEW: Execute using XML template (POST) -->
+                <button
+                  type="button"
+                  class="btn btn-xs btn-danger ml-1"
+                  onclick="executeWithXmlTemplate('{{ name }}')"
+                  title="POST XML template for {{ name }}"
+                >
+                  Execute (XML template)
+                </button>
+
+                {{ name }}
+              </h5>
+              {{ abstract }}
+            </div>
+          </li>
+          {% endfor %}
+        </ul>
+
+        <!-- Result area -->
+        <div id="executeResult" class="mt-3"></div>
+      </div>
+    </main>
+
+    <footer class="container">
+      <small>
+        <p>
+          Copyright (&copy;) 2014-2016 PyWPS Development Team
+          <cite>- represented by Jachym Cepicky.</cite>
+          Adapted to simple bootstrap
+          <cite>by Maarten Pronk.</cite>
+        </p>
+      </small>
+      <p>
+        <a
+          rel="license"
+          title="This work is licensed under a Creative Commons Attribution 4.0 International License"
+          href="http://creativecommons.org/licenses/by/4.0/"
+        >
+          <img
+            alt="Creative Commons License"
+            style="border-width: 0"
+            src="https://i.creativecommons.org/l/by/4.0/80x15.png"
+          />
+        </a>
+      </p>
+    </footer>
+
+    <!-- Script to load XML template and POST it like curl -->
+    <script>
+      async function executeWithXmlTemplate(procName) {
+        // XML template expected at: /static/examples/<procName>.xml
+        const templateUrl = '/static/examples/' + procName + '.xml';
+        const serverUrl = '{{ server_url }}'; // same-origin recommended
+
+        try {
+          // Load the XML template
+          const tplResp = await fetch(templateUrl, { cache: 'no-cache' });
+          if (!tplResp.ok) throw new Error('Template not found: ' + templateUrl);
+          const xmlBody = await tplResp.text();
+
+          // POST to WPS (equivalent to: curl -X POST -H "Content-Type: text/xml" --data @file.xml <serverUrl>)
+          const wpsResp = await fetch(serverUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/xml' },
+            body: xmlBody
+          });
+
+          const text = await wpsResp.text();
+          showResult(text, wpsResp.ok ? 'success' : 'danger');
+        } catch (err) {
+          showResult('Execute failed: ' + err.message, 'danger', true);
+        }
+      }
+
+      function showResult(content, level = 'info', plain = false) {
+        var box = document.getElementById('executeResult');
+        if (!box) return;
+        var label =
+          level === 'success' ? 'Execution Result' :
+          level === 'danger'  ? 'Execution Error'  : 'Result';
+        box.innerHTML =
+          '<h4>' + label + '</h4>' +
+          '<pre>' + (plain ? escapeHtml(content) : escapeHtml(content)) + '</pre>';
+        // simple scroll into view
+        box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>]/g, function (c) {
+          return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c];
+        });
+      }
+    </script>
+  </body>
+</html>

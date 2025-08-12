@@ -1,0 +1,23 @@
+*.pyc
+outputs/*
+logs/*
+tmp/*
+data/*
+static/*
+configuration.txt
+
+# vim, mac os
+*.sw*
+.DS_Store
+.*.un~
+.idea
+
+# python setup.py build/install artifacts
+build
+dist
+pywps_demo.egg-info/
+
+# docs build artifacts
+_build/
+
+
