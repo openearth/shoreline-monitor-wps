@@ -6,55 +6,35 @@
 # 100 MB parquet writes to 2.3 GB GPKG; performance is not sufficient for large datasets
 # we need a PostGIS database to store the data and serve it to the frontend. ICT provides that
 # can improve by: Automatically skip already-uploaded tables, Parallelize uploads, Add more metadata columns/indexes, Use a schema inside the PostGIS DB
-# see chatGPT "read parquet from Azure"
-
+# see chatGPT "read parquet from Azure" Etienne
 
 # %% load packages
 
 import os
-
-# import dotenv
-
-# import fsspec
 import geopandas as gpd
-
-# import hvplot.pandas
 import pandas as pd
 import pystac
-
-# import shapely
+import tempfile
 from shapely import wkb
-
-# import geojson
-# import tempfile
-# import coastpy
 from dotenv import load_dotenv
-
-# from ipyleaflet import Map, basemaps, GeoData
-# from shapely.geometry import Polygon, LineString
 from sqlalchemy import create_engine, text
-
-# from coastpy.stac.utils import read_snapshot
-# from coastpy.utils.config import fetch_sas_token
 from azure.storage.blob import BlobServiceClient
-
-# from urllib.parse import urlparse
-# from io import BytesIO
 
 load_dotenv()
 
-# %% configure cloud settings
-account_name = "coclico"  # AZURE_STORAGE_ACCOUNT_NAME
-container_name = "shorelinemonitor-series"  # AZURE_STORAGE_CONTAINER_NAME
+# %% configure cloud settings and postGIS connection
+postGIS = True  # set to False if you want to write to GPKG files instead of PostGIS
+account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
+container_name = "shorelinemonitor-series"  # "gctr", "shorelinemonitor-shorelines"
+# maybe later: "shorelinemonitor-raw-series", "gcts"
 
-# PostgreSQL connection (adjust as needed). TODO: replace with config or os.environ, this is not safe
+# PostgreSQL connection (adjust as needed)
 pg_user = os.getenv("PG_USER")
 pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
 pg_db = os.getenv("PG_DB")
 pg_port = "5432"
 
-# pg_url = f"postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
 engine = create_engine(
     f"postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
 )
@@ -77,11 +57,7 @@ engine = create_engine(
 coclico_catalog = pystac.Catalog.from_file(
     "https://coclico.blob.core.windows.net/stac/v1/catalog.json"
 )
-collection_series = coclico_catalog.get_child("shorelinemonitor-series")
-# collection_raw_series = coclico_catalog.get_child("shorelinemonitor-raw-series")
-collection_change = coclico_catalog.get_child("gctr")
-# collection_trs = coclico_catalog.get_child("gcts")
-collection_shorelines = coclico_catalog.get_child("shorelinemonitor-shorelines")
+collection = coclico_catalog.get_child(container_name)
 
 # %% blob service client and helper funcs
 
@@ -105,13 +81,13 @@ def parse_wkb(val):
 
 
 # %% looping over files
-item_blobs = collection_series.get_all_items()
+item_blobs = collection.get_all_items()
 for idx, item in enumerate(item_blobs):
 
     # set properties
-    item_href = item.assets["data"].href.split("shorelinemonitor-series/")[-1]
+    item_href = item.assets["data"].href.split(f"{container_name}/")[-1]
 
-    print(f"Processing {item.id}")
+    print(f"Processing {idx}: {item.id}")
 
     parquet_url = (
         f"https://{account_name}.blob.core.windows.net/"
@@ -140,82 +116,84 @@ for idx, item in enumerate(item_blobs):
         print(f"No geometry column found in {item.id}, skipping...")
         continue
 
-    # check if table exists and drop it
-    table_name = "shorelinemonitor-series".lower().replace("-", "_")
-    if idx == 0:
-        with engine.begin() as conn:
-            conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE;"))
+    if postGIS == True:
+        # check if table exists and drop it
+        table_name = container_name.lower().replace("-", "_")
+        if idx == 0:
+            with engine.begin() as conn:
+                conn.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE;"))
 
-        print(f"Earlier table is dropped: {table_name}")
+            print(f"Earlier table is dropped: {table_name}")
 
-    # small test
-    # gdf_sm = gdf.head(10)
+        # small test to put in the database
+        # gdf_sm = gdf.head(10)
 
-    # TODO: check working principle of this and options top of this script for improvements
-    # write to PostgreSQL with PostGIS database (appending the table)
-    try:
-        print(f"Uploading to PostGIS table: {table_name}")
-        gdf.to_postgis(
-            name=table_name,
-            con=engine,
-            if_exists="append",  # or 'append' if needed, "replace", "fail"
-            index=False,
-            chunksize=10000,  # boosts performance on large inserts
-        )
+        # write to PostgreSQL with PostGIS database (appending the table)
+        try:
+            print(f"Uploading to PostGIS table: {table_name}")
+            gdf.to_postgis(  # gdf_sm to test
+                name=table_name,
+                con=engine,
+                if_exists="append",  # or 'append' if needed, "replace", "fail"
+                index=False,
+                chunksize=10000,  # boosts performance on large inserts
+            )
 
-    except Exception as e:
-        print(f"Failed to upload {item.id}: {e}")
+        except Exception as e:
+            print(f"Failed to upload {item.id}: {e}")
 
+    if postGIS == False:
+        # Write to temporary local file (GKPG) and then to cloud bucket
+        with tempfile.TemporaryDirectory() as tmpdir:
+            gpkg_path = os.path.join(tmpdir, f"{item.id}.gpkg")
 
-# %% set index and primary keys to tables
+            try:
+                gdf.to_file(gpkg_path, driver="GPKG", layer="layer")
+            except Exception as e:
+                print(f"Failed to write GPKG file for {item.id}: {e}")
+                continue
+
+            # TODO: test the below to write to cloud storage, probably need to adjust folder names!
+            # Upload to Azure Blob Storage
+            output_blob_path = f"converted-gpkg/{item.id}.gpkg"
+            blob_client = container_client.get_blob_client(output_blob_path)
+
+            try:
+                with open(gpkg_path, "rb") as f:
+                    blob_client.upload_blob(f, overwrite=True)
+                print(f"Uploaded GeoPackage: {output_blob_path}")
+            except Exception as e:
+                print(f"Failed to upload GeoPackage for {item.id}: {e}")
+
+# %% set index and primary keys to tables in the database
+
 # set index on the complete table
-with engine.begin() as conn:
-    # Create spatial index
-    print(f"Creating spatial index on {table_name}...")
-    conn.execute(
-        text(
-            f"CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {table_name} USING GIST (geometry);"
+if postGIS == True:
+    with engine.begin() as conn:
+        # Create spatial index
+        print(f"Creating spatial index on {table_name}...")
+        conn.execute(
+            text(
+                f"CREATE INDEX IF NOT EXISTS {table_name}_geom_idx ON {table_name} USING GIST (geometry);"
+            )
         )
-    )
 
-    print(f"")
-    conn.execute(
-        text(
-            """
-        ALTER TABLE public.transects
-        ADD CONSTRAINT transects_pkey PRIMARY KEY (transect_id);
-    """
+        print(f"")
+        conn.execute(
+            text(
+                """
+            ALTER TABLE public.transects
+            ADD CONSTRAINT transects_pkey PRIMARY KEY (transect_id);
+        """
+            )
         )
-    )
-    conn.execute(
-        text(
-            """
-        ALTER TABLE public.transect_points
-        ADD COLUMN id bigserial PRIMARY KEY;
-    """
+        conn.execute(
+            text(
+                """
+            ALTER TABLE public.transect_points
+            ADD COLUMN id bigserial PRIMARY KEY;
+        """
+            )
         )
-    )
 
-print(f"Done with setting index {table_name}")
-
-# Write to temporary local file and then to cloud bucket
-# with tempfile.TemporaryDirectory() as tmpdir:
-#     gpkg_path = os.path.join(tmpdir, f"{item.id}.gpkg")
-
-#     try:
-#         gdf.to_file(gpkg_path, driver="GPKG", layer="layer")
-#     except Exception as e:
-#         print(f"Failed to write GPKG file for {item.id}: {e}")
-#         continue
-
-#     # TODO: test the below to write to cloud storage
-#     # Upload to Azure Blob Storage
-#     output_blob_path = f"converted-gpkg/{item.id}.gpkg"
-#     blob_client = container_client.get_blob_client(output_blob_path)
-
-#     try:
-#         with open(gpkg_path, "rb") as f:
-#             blob_client.upload_blob(f, overwrite=True)
-#         print(f"Uploaded GeoPackage: {output_blob_path}")
-#     except Exception as e:
-#         print(f"Failed to upload GeoPackage for {item.id}: {e}")
+    print(f"Done with setting index {table_name}")
