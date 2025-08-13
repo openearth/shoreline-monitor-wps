@@ -3,6 +3,7 @@ outputs/*
 data/*
 static/*
 configuration.txt
+.env
 
 # vim, mac os
 *.sw*
