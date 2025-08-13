@@ -6,6 +6,8 @@ A PyWPS implementation of the Web Processing Service
 
 conda create --name env_name -c conda-forge --file requirements.txt
 
+or use environment.yml (set the name of the project in the yml)
+
 ## Run service commands
 
 conda activate env_name

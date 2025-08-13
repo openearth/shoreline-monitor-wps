@@ -3,12 +3,11 @@
 # -*- coding: utf-8 -*-
 # Copyright notice
 #   --------------------------------------------------------------------
-#   Copyright (C) 2022 Deltares
+#   Copyright (C) 2025 Deltares
 #     Ioanna Micha
-
 #     ioanna.micha@deltares.nl
-#
-#
+#     Gerrit Hendriksen
+#     gerrit.hendriksen@deltares.nl	
 #
 #   This library is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by

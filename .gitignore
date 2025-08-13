@@ -1,7 +1,5 @@
 *.pyc
 outputs/*
-logs/*
-tmp/*
 data/*
 static/*
 configuration.txt
