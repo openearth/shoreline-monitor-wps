@@ -1,12 +1,12 @@
-# this script retrieves Floris' CoastMonitor ShorelineMonitor parquet datasets (GCTS, GCTR, shorelines, raw-series & series) from Azure and builds GKPG files
+# this script retrieves Floris' CoastMonitor ShorelineMonitor parquet datasets (GCTS, GCTR, shorelines, raw-series & series) from Azure and builds GKPG files in the cloud or a PostGIS database
 # Developer: Etiënne Kras, 06-08-2025
 # Env: Coastal
 
 # notes:
 # 100 MB parquet writes to 2.3 GB GPKG; performance is not sufficient for large datasets
 # we need a PostGIS database to store the data and serve it to the frontend. ICT provides that
-# can improve by: Automatically skip already-uploaded tables, Parallelize uploads, Add more metadata columns/indexes, Use a schema inside the PostGIS DB
-# see chatGPT "read parquet from Azure" Etienne
+# can improve by: Parallelize uploads, Add more metadata columns/indexes, Use a schema inside the PostGIS DB
+# see chatGPT "read parquet from Azure" in Etienne's account
 
 # %% load packages
 
