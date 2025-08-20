@@ -25,7 +25,7 @@ load_dotenv()
 # %% configure cloud settings and postGIS connection
 postGIS = True  # set to False if you want to write to GPKG files instead of PostGIS
 account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
-container_name = "shorelinemonitor-series"  # "gctr", "shorelinemonitor-shorelines"
+container_name = "shorelinemonitor-series"  # "gctr", "shorelinemonitor-shorelines", "shorelinemonitor-series"
 # maybe later: "shorelinemonitor-raw-series", "gcts"
 
 # PostgreSQL connection (adjust as needed)
@@ -109,6 +109,9 @@ for idx, item in enumerate(item_blobs):
                 df, geometry=df["geometry"].apply(parse_wkb)
             )  # default is "OGC:CRS84"
             gdf.set_crs("EPSG:4326", inplace=True)
+            gdf.columns = gdf.columns.str.replace(
+                ":", "_", regex=False
+            )  # needed for PostGIS compatibility in GCTR
         except Exception as e:
             print(f"Failed to convert to GeoDataFrame for {item.id}: {e}")
             continue
@@ -127,6 +130,41 @@ for idx, item in enumerate(item_blobs):
 
         # small test to put in the database
         # gdf_sm = gdf.head(10)
+
+        # only select first X columns in the databse
+        # gdf_sm = gdf.iloc[:, :26]  # adjust as needed, e.g., first 10 columns
+
+        # only select relevant columns
+        if container_name == "gctr":  # for GCTR
+            gdf = gdf[
+                [
+                    "transect_id",
+                    "geometry",
+                    "continent",
+                    "common_country_name",
+                    "sds_start_datetime",
+                    "sds_end_datetime",
+                    "sds_change_rate",
+                    "sds_change_intercept",
+                    "sds_change_rate_std_err",
+                    "sds_r_squared",
+                    "class_shore_type",
+                    "class_coastal_type",
+                ]
+            ]
+        if container_name == "shorelinemonitor-series":  # for series
+            gdf = gdf[
+                [
+                    "transect_id",
+                    "obs_id",
+                    "datetime",
+                    "geometry",
+                    "shoreline_position",
+                    "chainage",
+                    "obs_is_primary",
+                    "obs_is_outlier",
+                ]
+            ]
 
         # write to PostgreSQL with PostGIS database (appending the table)
         try:
