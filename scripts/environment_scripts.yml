@@ -1,0 +1,17 @@
+name: coastviewer_scripts
+channels:
+  - conda-forge
+dependencies:
+  - geopandas
+  - pandas
+  - pip
+  - pystac
+  - python=3
+  - shapely
+  - sqlalchemy
+  - azure-storage-blob
+  - psycopg2-binary
+  - ipykernel
+  - pyarrow
+  - geoalchemy2
+prefix: C:\ProgramData\miniforge3\envs\coastviewer_scripts

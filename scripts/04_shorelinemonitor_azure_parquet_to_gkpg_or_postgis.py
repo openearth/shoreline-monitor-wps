@@ -17,7 +17,10 @@ import pystac
 import tempfile
 from shapely import wkb
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
 from azure.storage.blob import BlobServiceClient
 
 load_dotenv()
@@ -25,7 +28,8 @@ load_dotenv()
 # %% configure cloud settings and postGIS connection
 postGIS = True  # set to False if you want to write to GPKG files instead of PostGIS
 account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
-container_name = "shorelinemonitor-series"  # "gctr", "shorelinemonitor-shorelines", "shorelinemonitor-series"
+container_name = "gctr"  # "gctr", "shorelinemonitor-shorelines", 
+                         #"shorelinemonitor-series"
 # maybe later: "shorelinemonitor-raw-series", "gcts"
 
 # PostgreSQL connection (adjust as needed)
@@ -68,6 +72,40 @@ blob_service_client = BlobServiceClient(
 
 container_client = blob_service_client.get_container_client(container_name)
 
+# some DBASE Functions
+# function to create table based on the columnname
+Base = declarative_base()
+inspector = inspect(engine)
+def create_table(columname):
+    if not inspector.has_table(columname):
+        strsql = f"""create table {columname} ({columname}id serial, {columname} text)""" 
+        with engine.begin() as conn:
+            conn.execute(text(strsql))
+    return
+
+class CommonCountryName(Base):
+    __tablename__ = 'common_country_name'
+    common_country_nameid = Column(Integer, primary_key=True)
+    common_country_name = Column(String, unique=True)
+
+def insert_common_country_name(engine, common_country_name):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    try:
+        existing_country = session.query(CommonCountryName).filter_by(common_country_name=common_country_name).first()
+        if existing_country:
+            return existing_country.common_country_nameid
+        else:
+            new_country = CommonCountryName(common_country_name=common_country_name)
+            session.add(new_country)
+            session.commit()
+            return new_country.common_country_nameid
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 # helper func
 def parse_wkb(val):
@@ -83,7 +121,7 @@ def parse_wkb(val):
 # %% looping over files
 item_blobs = collection.get_all_items()
 for idx, item in enumerate(item_blobs):
-
+    
     # set properties
     item_href = item.assets["data"].href.split(f"{container_name}/")[-1]
 
@@ -134,14 +172,24 @@ for idx, item in enumerate(item_blobs):
         # only select first X columns in the databse
         # gdf_sm = gdf.iloc[:, :26]  # adjust as needed, e.g., first 10 columns
 
+
         # only select relevant columns
         if container_name == "gctr":  # for GCTR
+            # some data normalisation based on the columns below
+            create_table('common_country_name')
+            cntr_ids = {}
+            for country in df['common_country_name']:
+                id = insert_common_country_name(engine,country)
+                cntr_ids[country]=id
+            
+            gdf['country_id'] = gdf['common_country_name'].map(cntr_ids)
+
             gdf = gdf[
                 [
                     "transect_id",
                     "geometry",
                     "continent",
-                    "common_country_name",
+                    "country_id",
                     "sds_start_datetime",
                     "sds_end_datetime",
                     "sds_change_rate",
