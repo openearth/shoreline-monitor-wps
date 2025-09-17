@@ -28,7 +28,7 @@ load_dotenv()
 # %% configure cloud settings and postGIS connection
 postGIS = True  # set to False if you want to write to GPKG files instead of PostGIS
 account_name = os.getenv("AZURE_STORAGE_ACCOUNT")
-container_name = "gctr"  # "gctr", "shorelinemonitor-shorelines", 
+container_name = "shorelinemonitor-series"  # "gctr", "shorelinemonitor-shorelines", 
                          #"shorelinemonitor-series"
 # maybe later: "shorelinemonitor-raw-series", "gcts"
 
@@ -238,9 +238,20 @@ for idx, item in enumerate(item_blobs):
                 ]
             ]
         if container_name == "shorelinemonitor-series":  # for series
+
+            # here a piece of code that gets the unique transect_ids
+            # retrieves them from the gctr transect_ids, bear in mind, here you 
+            # can have multiple records with the same transect_id! Hence the use of unique()
+            # where it is supposed not to happen with gctr data
+            transects = {}
+            for trid in df['transect_id'].unique():
+                id = insert_transect(engine,trid)
+                transects[trid]=id 
+            gdf['transectid'] = gdf['transect_id'].map(transects)
+
             gdf = gdf[
                 [
-                    "transect_id",
+                    "transectid",
                     "obs_id",
                     "datetime",
                     "geometry",
