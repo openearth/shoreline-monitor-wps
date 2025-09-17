@@ -38,7 +38,7 @@ pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
 pg_db = os.getenv("PG_DB")
 pg_user = 'postgres'
-pg_pass = 'ghn13227'
+pg_pass = 'thingy'
 pg_host = 'localhost'
 pg_port = "5432"
 
@@ -208,7 +208,7 @@ for idx, item in enumerate(item_blobs):
             # some data normalisation based on the columns below
             create_table('common_country_name')
             cntr_ids = {}
-            for country in df['common_country_name']:
+            for country in df['common_country_name'].unique():
                 id = insert_common_country_name(engine,country)
                 cntr_ids[country]=id
 
