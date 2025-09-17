@@ -37,6 +37,9 @@ pg_user = os.getenv("PG_USER")
 pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
 pg_db = os.getenv("PG_DB")
+pg_user = 'postgres'
+pg_pass = 'ghn13227'
+pg_host = 'localhost'
 pg_port = "5432"
 
 engine = create_engine(
@@ -76,6 +79,7 @@ container_client = blob_service_client.get_container_client(container_name)
 # function to create table based on the columnname
 Base = declarative_base()
 inspector = inspect(engine)
+
 def create_table(columname):
     if not inspector.has_table(columname):
         strsql = f"""create table {columname} ({columname}id serial, {columname} text)""" 
@@ -83,11 +87,18 @@ def create_table(columname):
             conn.execute(text(strsql))
     return
 
+# setup classes that define tables to connect to 
 class CommonCountryName(Base):
     __tablename__ = 'common_country_name'
     common_country_nameid = Column(Integer, primary_key=True)
     common_country_name = Column(String, unique=True)
 
+class Transect(Base):
+    __tablename__ = 'transect'
+    transectid = Column(Integer, primary_key=True)
+    transect = Column(String, unique=True)
+
+# function to insert country name and or find already inserted name
 def insert_common_country_name(engine, common_country_name):
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -101,6 +112,25 @@ def insert_common_country_name(engine, common_country_name):
             session.add(new_country)
             session.commit()
             return new_country.common_country_nameid
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+def insert_transect(engine, transectid):
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    try:
+        id = session.query(Transect).filter_by(transect=transectid).first()
+        if id:
+            return id.transectid
+        else:
+            id = Transect(transect=transectid)
+            session.add(id)
+            session.commit()
+            return id.transectid
     except Exception as e:
         session.rollback()
         raise e
@@ -181,12 +211,19 @@ for idx, item in enumerate(item_blobs):
             for country in df['common_country_name']:
                 id = insert_common_country_name(engine,country)
                 cntr_ids[country]=id
-            
+
+            create_table('transect')
+            transects = {}
+            for trid in df['transect_id']:
+                id = insert_transect(engine,trid)
+                transects[trid]=id
+
             gdf['country_id'] = gdf['common_country_name'].map(cntr_ids)
+            gdf['transectid'] = gdf['transect_id'].map(transects)
 
             gdf = gdf[
                 [
-                    "transect_id",
+                    "transectid",
                     "geometry",
                     "continent",
                     "country_id",
