@@ -1,7 +1,14 @@
-name: pywps-template
+name: shoreline_monitor_wps
 channels:
   - conda-forge
 dependencies:
   - python=3
   - pywps
   - flask
+  - pandas
+  - python-dotenv
+  - sqlalchemy
+  - psycopg2-binary
+  - plotly
+  - nbformat
+  - scikit-learn

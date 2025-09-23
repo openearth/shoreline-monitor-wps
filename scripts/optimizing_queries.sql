@@ -69,4 +69,20 @@ select
   pg_total_relation_size(quote_ident(table_name))
 from information_schema.tables
 where table_schema = 'public' and table_name = 'shorelinemonitor_series';
--- yields 63 Gb
+-- yields 63 GB
+
+
+-- various cleaning
+CREATE INDEX IF NOT EXISTS idx_shorelinemonitor_series_gctr_id ON public.shorelinemonitor_series (gctr_id);
+CREATE INDEX IF NOT EXISTS idx_shorelinemonitor_series_datetime ON public.shorelinemonitor_series (datetime);
+
+ANALYZE public.gctr;
+ANALYZE public.country;
+ANALYZE public.continent;
+ANALYZE public.shorelinemonitor_series;
+
+VACUUM (FULL) public.gctr;
+VACUUM (FULL) public.country;
+VACUUM (FULL) public.continent;
+VACUUM (FULL) public.shorelinemonitor_series;
+

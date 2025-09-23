@@ -41,11 +41,13 @@ import logging
 
 # Ultimate question
 from processes.wps_ultimate_question import UltimateQuestion
+from processes.wps_shoreline_getprofile import WpsShorelineGetprofile
 
 
 # TODO add the proces in the processes list
 processes = [
     UltimateQuestion(),
+    WpsShorelineGetprofile(),
 ]
 
 # Description used in template

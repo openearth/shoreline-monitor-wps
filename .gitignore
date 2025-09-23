@@ -4,6 +4,8 @@ data/*
 static/*
 configuration.txt
 .env
+data/*.html
+logs/pywps.log
 
 # vim, mac os
 *.sw*
