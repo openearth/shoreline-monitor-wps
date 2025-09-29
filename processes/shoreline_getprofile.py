@@ -61,6 +61,15 @@ engine = create_engine(
 )
 
 def scatterplot(df,dfm):
+    """_summary_
+
+    Args:
+        df (dataframe): data of the transect (derive from shoreline monitor series data)
+        dfm (dataframe): metadata of the transect (gctr data)
+
+    Returns:
+        html: html document with scatterplot, trenline and metadata of the transect
+    """
     # Create basic scatter plot
     fig = go.Figure(data=[go.Scatter(
         x=df['datetime'],
@@ -77,6 +86,8 @@ def scatterplot(df,dfm):
     x_pred = np.linspace(0, len(df) - 1, 100).reshape(-1, 1)
     y_pred = model.predict(x_pred)
 
+    print('regression line calculated')
+
     fig.add_trace(go.Scatter(
     x=df['datetime'].iloc[0] + (df['datetime'].iloc[-1] - df['datetime'].iloc[0]) * np.linspace(0, 1, 100),
     y=y_pred,
@@ -85,6 +96,8 @@ def scatterplot(df,dfm):
     line=dict(color='red'),
     name='Regression Line'
     ))
+
+    print('scatter and regression line created')
 
     # Update layout
     fig.update_layout(
@@ -99,14 +112,28 @@ def scatterplot(df,dfm):
 
     # define htmlfile to write to serverside place and store
     htmlfile = os.path.join(abspath,pltname)
+    print('htmlfile',htmlfile)
     fig.write_html(htmlfile,auto_play=False)
+
+    print('figure created')
     assignmetadata(htmlfile,dfm)
+    print('after assigning metadata')
     
     # based on the pltname, define the url needed to pass to frontend
     url = f'{location}/data/{pltname}'
     return url
 
 def assignmetadata(html,dfm):
+    """This function adds metadata to the scatterplot created in the previous routine.
+    This metadata gives overal description of the transect.
+
+    Args:
+        html (string): html file with scatterplot
+        dfm (dataframe): dataframe with basic metadata derived from gctr table
+
+    Returns:
+        html (string): overwrites the created html file by appending a specific portion of html code and contents
+    """
     # Create a HTML string with information
     html_info = '''
     <div>
@@ -134,45 +161,69 @@ def assignmetadata(html,dfm):
         </table>
         </div>
         '''
+    
     # Read the plot HTML file
-    with open(html, 'r') as f:
+    with open(html, 'r', encoding='utf-8', errors='replace') as f:
         plot_html = f.read()
 
     # Add the information section to the plot HTML
     #newfile = html.replace('.html','_m.html')
-    with open(html, 'w') as f:
+    with open(html, 'w', encoding='utf-8') as f:
         f.write(plot_html + html_info)
+    
     return html
 
 def handler(profile):
+    """This function is the main handler that recieves data from the WPS service.
+        The function constructs an HTML page with information from the profile (metadata called) 
+        and data from the associated points in time and returns an html page with both data integrated
+
+        Args:
+            profile (integer): profile id of the transect/profile, bear in mind, 
+            this is not the transect_id, but a unique index generated after reading the data
+
+        Returns:
+            html (string): link to an html file with information on the profile (transect) and 
+                           timeseries data.
+    """    
     """
     first part selects the metadata
     """
-    print('profile in handler',profile)
+    
+    
     strsql = f"""SELECT 
-                g.transect_id,
+                g.transect_id as transect_id,
                 common_country_name as country,
                 continent,
                 sandy,
-                sds_change_rate
+                sds_change_rate,
+                index
                 FROM public.gctr g
                 join country c on c.idccn = g.idccn
                 join continent ct on ct.idcnt = g.idcnt
-                where g.index = {profile}""" 
+                where g.index = {profile}"""
     
     df = pd.read_sql_query(strsql,engine)
-
-    print('profile in handler',profile, len(df))
-    #profile = 8918455
+    
     #scond part gets the profile data
     strsql = f"""select datetime, shoreline_position 
                  from shorelinemonitor_series 
                  where gctr_id = '{profile}'
                  order by datetime"""
     dfp = pd.read_sql_query(strsql,engine)
-    print(len(dfp))
+
+    # okay, there is an issue here, there are shorelines without points!
+    # to be exact, some figures:
+    # - gctr has 11545312 unique transect_id
+    # - shoreline_monitor_series has 7471154 unique transect ids 
+    # DIFFERENCE is 3.5 * 10^6 ... records, meaning, for 3.5 miljon profiles, there is no data available
+    # need to do something with that
+    
+    if len(dfp) == 0:
+        print('no derived measurements available')
+ 
     url = scatterplot(dfp,df)
-    print('url',url)
+ 
     return url
     
 def test():

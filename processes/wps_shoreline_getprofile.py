@@ -29,7 +29,7 @@
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
 
-# http://localhost:5000/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getprofile&datainputs=profileid={"profileid":436}
+# http://localhost:5000/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getprofile&datainputs=profileid={"profileid":2805066}
 
 import json
 from pywps import Format
@@ -68,7 +68,17 @@ class WpsShorelineGetprofile(Process):
         )
 
     def _handler(self, request, response):
-        print('test')
+        """Returns a complex output (json with link to the document with a timeseries plot 
+           of accretion/decreation number of coastlines) from shorelinemonitor_series table
+
+        Args:
+            request (json):  request is composed of profile-id that is passed from front end to PyWPS, 
+                             profile-id is the index of gctr table
+            response (json): json with a link to a html document with plot of shoreline monitor timeseries
+
+        Returns:
+            json: json with a link to a html document with plot of shoreline monitor timeseries
+        """
         try:
             profileid = request.inputs["profileid"][0].data
             profileid_json = json.loads(profileid)
@@ -80,5 +90,5 @@ class WpsShorelineGetprofile(Process):
         except Exception as e:
             res = { 'errMsg' : 'ERROR: {}'.format(e)}
             print(res)
-            response.outputs["peilfilter_data"].data = "Something went very wrong, please check logfile"
+            response.outputs["profileinformation"].data = "Something went very wrong, please check logfile"
         return response
