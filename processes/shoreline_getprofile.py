@@ -60,6 +60,7 @@ logger.info('location set',location)
 pg_user = os.getenv("PG_USER")
 pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
+pg_host = 'c-oet30001.directory.intra'
 pg_db = os.getenv("PG_DB")
 pg_port = 5432
 logger.info('host/username',pg_host,pg_user)
