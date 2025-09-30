@@ -33,6 +33,7 @@ import os
 import time
 import pandas as pd
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import plotly.graph_objs as go
 # import plotly.offline as pyo
@@ -67,6 +68,11 @@ pg_port = 5432
 engine = create_engine(
     f"postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
 )
+try:
+    engine.connect()
+    logger.info("successfull connection to database")
+except SQLAlchemyError as err:
+    logger.info("error connecting", err.__cause__)
 
 def scatterplot(df,dfm):
     """_summary_
