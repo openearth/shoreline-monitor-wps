@@ -38,16 +38,24 @@ import plotly.graph_objs as go
 # import plotly.offline as pyo
 from sklearn.linear_model import LinearRegression
 import numpy as np
+import logging
+logger = logging.getLogger("PYWPS")
+
 
 # some generic to load env file
 load_dotenv()
+logger.info('env settings read')
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 if os.name == 'nt':
     abspath = 'C:/develop/shoreline-monitor-wps/data/'
     location = 'localhost:5000'
 else:
-    location = 'blabla.avi.directory'
+    abspath = 'opt/pywps/data/'
+    location = 'https://shoreline-monitor.avi.directory.intra/wps'
+
+logger.info('abspath set',abspath)
+logger.info('location set',location)
 
 # PostgreSQL connection (adjust as needed)
 pg_user = os.getenv("PG_USER")
@@ -112,12 +120,13 @@ def scatterplot(df,dfm):
 
     # define htmlfile to write to serverside place and store
     htmlfile = os.path.join(abspath,pltname)
-    print('htmlfile',htmlfile)
+    logger.info('htmlfile',htmlfile)
     fig.write_html(htmlfile,auto_play=False)
 
-    print('figure created')
+    logger.info('plot created')
+
     assignmetadata(htmlfile,dfm)
-    print('after assigning metadata')
+    logger.info('metadata added to plot')
     
     # based on the pltname, define the url needed to pass to frontend
     url = f'{location}/data/{pltname}'
@@ -220,7 +229,7 @@ def handler(profile):
     # need to do something with that
     
     if len(dfp) == 0:
-        print('no derived measurements available')
+        logger.info('no derived measurements available for id', profile)
  
     url = scatterplot(dfp,df)
  

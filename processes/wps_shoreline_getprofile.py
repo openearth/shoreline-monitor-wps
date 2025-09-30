@@ -30,6 +30,11 @@
 # your own tools.
 
 # http://localhost:5000/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getprofile&datainputs=profileid={"profileid":2805066}
+# 
+# production:
+# getcapabilities https://shoreline-monitor.avi.directory.intra/wps?service=wps&request=getcapabilities
+# execute https://shoreline-monitor.avi.directory.intra/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getprofile&datainputs=profileid={"profileid":2805066}
+
 
 import json
 from pywps import Format
@@ -38,6 +43,8 @@ from pywps.inout.inputs import ComplexInput
 from pywps.inout.outputs import ComplexOutput
 from pywps.app.Common import Metadata
 from .shoreline_getprofile import handler
+import logging
+logger = logging.getLogger("PYWPS")
 
 class WpsShorelineGetprofile(Process):
     def __init__(self):
@@ -82,9 +89,9 @@ class WpsShorelineGetprofile(Process):
         try:
             profileid = request.inputs["profileid"][0].data
             profileid_json = json.loads(profileid)
-            print(profileid_json['profileid'])
+            logger.info('provided input', profileid_json['profileid'])
             url = handler(profileid_json['profileid'])
-            print(url)
+            logger.info('url created',url)
             response.outputs['profileinformation'].data = json.dumps({'url':url})
             
         except Exception as e:
