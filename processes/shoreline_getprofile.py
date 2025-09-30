@@ -36,12 +36,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from dotenv import load_dotenv
 import plotly.graph_objs as go
-# import plotly.offline as pyo
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
 logger = logging.getLogger("PYWPS")
-
 
 # some generic to load env file
 load_dotenv()
@@ -205,7 +203,7 @@ def handler(profile):
     """
     first part selects the metadata
     """
-    
+    logger.info('handler, profile',profile)
     
     strsql = f"""SELECT 
                 g.transect_id as transect_id,
