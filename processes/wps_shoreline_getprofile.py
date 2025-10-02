@@ -89,9 +89,9 @@ class WpsShorelineGetprofile(Process):
         try:
             profileid = request.inputs["profileid"][0].data
             profileid_json = json.loads(profileid)
-            logger.info('provided input', profileid_json['profileid'])
+            logger.info(f'provided input: {profileid_json["profileid"]}')
             url = handler(profileid_json['profileid'])
-            logger.info('url created',url)
+            logger.info(f'url created: {url}')
             response.outputs['profileinformation'].data = json.dumps({'url':url})
             
         except Exception as e:

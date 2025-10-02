@@ -53,14 +53,14 @@ else:
     abspath = 'opt/pywps/data/'
     location = 'https://shoreline-monitor.avi.directory.intra/wps'
 
-logger.info('abspath set',abspath)
-logger.info('location set',location)
+logger.info(f'abspath set: {abspath}')
+logger.info(f'location set: {location}')
 
 # PostgreSQL connection (adjust as needed)
 pg_user = os.getenv("PG_USER")
 pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
-logger.info('host/username',pg_host,pg_user)
+logger.info(f'host/username: {pg_host}, {pg_user}')
 pg_host = 'c-oet30001.directory.intra'
 pg_db = os.getenv("PG_DB")
 pg_port = 5432
@@ -72,7 +72,7 @@ try:
     engine.connect()
     logger.info("successfull connection to database")
 except SQLAlchemyError as err:
-    logger.info("error connecting", err.__cause__)
+    logger.info(f"error connecting: {err.__cause__}")
 
 def scatterplot(df,dfm):
     """_summary_
@@ -126,7 +126,7 @@ def scatterplot(df,dfm):
 
     # define htmlfile to write to serverside place and store
     htmlfile = os.path.join(abspath,pltname)
-    logger.info('htmlfile',htmlfile)
+    logger.info(f'htmlfile: {htmlfile}')
     fig.write_html(htmlfile,auto_play=False)
 
     logger.info('plot created')
@@ -204,7 +204,7 @@ def handler(profile):
     """
     first part selects the metadata
     """
-    logger.info('handler, profile',profile)
+    logger.info(f'handler, profile: {profile}')
     
     strsql = f"""SELECT 
                 g.transect_id as transect_id,
@@ -235,7 +235,7 @@ def handler(profile):
     # need to do something with that
     
     if len(dfp) == 0:
-        logger.info('no derived measurements available for id', profile)
+        logger.info(f'no derived measurements available for id: {profile}')
  
     url = scatterplot(dfp,df)
  
