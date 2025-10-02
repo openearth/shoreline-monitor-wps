@@ -44,13 +44,16 @@ logger = logging.getLogger("PYWPS")
 # some generic to load env file
 load_dotenv()
 
+
 abspath = os.path.dirname(os.path.abspath(__file__))
 if os.name == 'nt':
     abspath = 'C:/develop/shoreline-monitor-wps/data/'
     location = 'localhost:5000'
 else:
-    abspath = '/mnt/c/develop/shoreline-monitor-wps/data/'
-    location = 'localhost:5000'
+    abspath = 'opt/pywps/data/'
+    location = 'https://shoreline-monitor.avi.directory.intra/wps'
+
+
 
 # PostgreSQL connection (adjust as needed)
 pg_user = os.getenv("PG_USER")
