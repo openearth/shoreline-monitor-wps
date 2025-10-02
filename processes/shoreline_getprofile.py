@@ -43,24 +43,19 @@ logger = logging.getLogger("PYWPS")
 
 # some generic to load env file
 load_dotenv()
-logger.info('env settings read')
 
 abspath = os.path.dirname(os.path.abspath(__file__))
 if os.name == 'nt':
     abspath = 'C:/develop/shoreline-monitor-wps/data/'
     location = 'localhost:5000'
 else:
-    abspath = 'opt/pywps/data/'
-    location = 'https://shoreline-monitor.avi.directory.intra/wps'
-
-logger.info(f'abspath set: {abspath}')
-logger.info(f'location set: {location}')
+    abspath = '/mnt/c/develop/shoreline-monitor-wps/data/'
+    location = 'localhost:5000'
 
 # PostgreSQL connection (adjust as needed)
 pg_user = os.getenv("PG_USER")
 pg_pass = os.getenv("PG_PASS")
 pg_host = os.getenv("PG_HOST")
-logger.info(f'host/username: {pg_host}, {pg_user}')
 pg_host = 'c-oet30001.directory.intra'
 pg_db = os.getenv("PG_DB")
 pg_port = 5432
@@ -204,6 +199,11 @@ def handler(profile):
     """
     first part selects the metadata
     """
+    # Log configuration info (will appear in pywps.log)
+    logger.info(f'env settings read, os: {os.getenv("PG_USER")}')
+    logger.info(f'abspath set: {abspath}')
+    logger.info(f'location set: {location}')
+    logger.info(f'host/username: {pg_host}, {pg_user}')
     logger.info(f'handler, profile: {profile}')
     
     strsql = f"""SELECT 
