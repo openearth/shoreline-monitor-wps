@@ -1,1 +1,6 @@
+[database]
+PG_USER = 
+PG_PASS = 
+PG_HOST = 
+PG_DB = 
 

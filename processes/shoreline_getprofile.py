@@ -35,7 +35,7 @@ import time
 import pandas as pd
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from dotenv import load_dotenv
+import configparser
 import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
@@ -56,39 +56,37 @@ def _initialize_config():
     if _config_initialized:
         return  # Already initialized
     
+
     
+    # Load configuration file
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    config_file = os.path.join(project_root, 'configuration.txt')
     
-    # Load environment variables
-    logger.info(f"Current working directory: {os.getcwd()}")
-    logger.info(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+   
+    config = configparser.ConfigParser()
+    config.read(config_file, encoding='utf-8')
     
+    # Set paths - use relative paths from project root
     if os.name == 'nt':
-        # Windows development
-        success = load_dotenv()
-        logger.info(f"Windows - load_dotenv() success: {success}")
-    else:
-        # Linux server
-        success = load_dotenv('/opt/pywps/.env')
-        logger.info(f"Linux - load_dotenv() success: {success}")
-    
-    if not success:
-        logger.warning("Environment file not loaded successfully")
-    
-    # Set paths
-    if os.name == 'nt':
-        _abspath = 'C:/develop/shoreline-monitor-wps/data/'
+        _abspath = os.path.join(project_root, 'data')
         _location = 'localhost:5000'
+
+
     else:
-        _abspath = '/opt/pywps/data/'
+        _abspath = os.path.join(project_root, 'data')
         _location = 'https://shoreline-monitor.avi.directory.intra/wps'
     
+
     
-    # PostgreSQL connection
-    pg_user = os.getenv("PG_USER")
-    pg_pass = os.getenv("PG_PASS")
-    pg_host = 'c-oet30001.directory.intra'  # Override as in original
-    pg_db = os.getenv("PG_DB")
+    # PostgreSQL connection - read from config file
+    pg_user = config.get('database', 'PG_USER')
+    pg_pass = config.get('database', 'PG_PASS')
+    pg_host = config.get('database', 'PG_HOST')  
+    pg_db = config.get('database', 'PG_DB')
     pg_port = 5432
+    
+
     
     
     try:
