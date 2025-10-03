@@ -8,6 +8,7 @@
 #     ioanna.micha@deltares.nl
 #     Gerrit Hendriksen
 #     gerrit.hendriksen@deltares.nl	
+
 #
 #   This library is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -39,49 +40,87 @@ import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
+
 logger = logging.getLogger("PYWPS")
 
-# some generic to load env file
-load_dotenv()
+# Global variables to cache configuration
+_config_initialized = False
+_engine = None
+_abspath = None
+_location = None
 
+def _initialize_config():
+    """Initialize configuration - runs once per request when PyWPS is ready"""
+    global _config_initialized, _engine, _abspath, _location
+    
+    if _config_initialized:
+        return  # Already initialized
+    
+    
+    
+    # Load environment variables
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+    
+    if os.name == 'nt':
+        # Windows development
+        success = load_dotenv()
+        print(f"Windows - load_dotenv() success: {success}")
+    else:
+        # Linux server
+        success = load_dotenv('/opt/pywps/.env')
+        logger.info(f"Linux - load_dotenv() success: {success}")
+    
+    if not success:
+        logger.warning("Environment file not loaded successfully")
+    
+    # Set paths
+    if os.name == 'nt':
+        _abspath = 'C:/develop/shoreline-monitor-wps/data/'
+        _location = 'localhost:5000'
+    else:
+        _abspath = '/opt/pywps/data/'
+        _location = 'https://shoreline-monitor.avi.directory.intra/wps'
+    
+    
+    # PostgreSQL connection
+    pg_user = os.getenv("PG_USER")
+    pg_pass = os.getenv("PG_PASS")
+    pg_host = 'c-oet30001.directory.intra'  # Override as in original
+    pg_db = os.getenv("PG_DB")
+    pg_port = 5432
+    
+    
+    try:
+        _engine = create_engine(
+            f"postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
+        )
+        # Test connection
+        _engine.connect().close()
+        logger.info("Database connection successful")
+    except SQLAlchemyError as err:
+        logger.error(f"Database connection failed: {err}")
+        raise
+    except Exception as err:
+        logger.error(f"Unexpected error creating database connection: {err}")
+        raise
+    
+    _config_initialized = True
 
-abspath = os.path.dirname(os.path.abspath(__file__))
-if os.name == 'nt':
-    abspath = 'C:/develop/shoreline-monitor-wps/data/'
-    location = 'localhost:5000'
-else:
-    abspath = 'opt/pywps/data/'
-    location = 'https://shoreline-monitor.avi.directory.intra/wps'
-
-
-
-# PostgreSQL connection (adjust as needed)
-pg_user = os.getenv("PG_USER")
-pg_pass = os.getenv("PG_PASS")
-pg_host = os.getenv("PG_HOST")
-pg_host = 'c-oet30001.directory.intra'
-pg_db = os.getenv("PG_DB")
-pg_port = 5432
-
-engine = create_engine(
-    f"postgresql+psycopg2://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/{pg_db}"
-)
-try:
-    engine.connect()
-    logger.info("successfull connection to database")
-except SQLAlchemyError as err:
-    logger.info(f"error connecting: {err.__cause__}")
-
-def scatterplot(df,dfm):
-    """_summary_
+def scatterplot(df, dfm):
+    """Create scatterplot with regression line and metadata
 
     Args:
         df (dataframe): data of the transect (derive from shoreline monitor series data)
         dfm (dataframe): metadata of the transect (gctr data)
 
     Returns:
-        html: html document with scatterplot, trenline and metadata of the transect
+        html: html document with scatterplot, trendline and metadata of the transect
     """
+    global _abspath, _location
+    
+    logger.info("Starting scatterplot generation")
+    
     # Create basic scatter plot
     fig = go.Figure(data=[go.Scatter(
         x=df['datetime'],
@@ -98,7 +137,7 @@ def scatterplot(df,dfm):
     x_pred = np.linspace(0, len(df) - 1, 100).reshape(-1, 1)
     y_pred = model.predict(x_pred)
 
-    print('regression line calculated')
+    logger.info('Regression line calculated')
 
     fig.add_trace(go.Scatter(
     x=df['datetime'].iloc[0] + (df['datetime'].iloc[-1] - df['datetime'].iloc[0]) * np.linspace(0, 1, 100),
@@ -109,7 +148,7 @@ def scatterplot(df,dfm):
     name='Regression Line'
     ))
 
-    print('scatter and regression line created')
+    logger.info('Scatter and regression line created')
 
     # Update layout
     fig.update_layout(
@@ -123,30 +162,35 @@ def scatterplot(df,dfm):
     pltname = f'plot_{id}.html'
 
     # define htmlfile to write to serverside place and store
-    htmlfile = os.path.join(abspath,pltname)
-    logger.info(f'htmlfile: {htmlfile}')
-    fig.write_html(htmlfile,auto_play=False)
+    htmlfile = os.path.join(_abspath, pltname)
+    logger.info(f'Writing plot to: {htmlfile}')
+    fig.write_html(htmlfile, auto_play=False)
 
-    logger.info('plot created')
+    logger.info('Plot file created')
 
-    assignmetadata(htmlfile,dfm)
-    logger.info('metadata added to plot')
+    assignmetadata(htmlfile, dfm)
+    logger.info('Metadata added to plot')
     
     # based on the pltname, define the url needed to pass to frontend
-    url = f'{location}/data/{pltname}'
+    url = f'{_location}/data/{pltname}'
+    logger.info(f'Generated URL: {url}')
     return url
 
-def assignmetadata(html,dfm):
+def assignmetadata(html, dfm):
     """This function adds metadata to the scatterplot created in the previous routine.
-    This metadata gives overal description of the transect.
+    This metadata gives overall description of the transect.
 
     Args:
-        html (string): html file with scatterplot
-        dfm (dataframe): dataframe with basic metadata derived from gctr table
+
+
+         html (string): html file with scatterplot
+         dfm (dataframe): dataframe with basic metadata derived from gctr table
 
     Returns:
-        html (string): overwrites the created html file by appending a specific portion of html code and contents
+         html (string): overwrites the created html file by appending a specific portion of html code and contents
     """
+    logger.info("Adding metadata to plot")
+    
     # Create a HTML string with information
     html_info = '''
     <div>
@@ -180,14 +224,14 @@ def assignmetadata(html,dfm):
         plot_html = f.read()
 
     # Add the information section to the plot HTML
-    #newfile = html.replace('.html','_m.html')
     with open(html, 'w', encoding='utf-8') as f:
         f.write(plot_html + html_info)
     
+    logger.info("Metadata successfully added")
     return html
 
 def handler(profile):
-    """This function is the main handler that recieves data from the WPS service.
+    """This function is the main handler that receives data from the WPS service.
         The function constructs an HTML page with information from the profile (metadata called) 
         and data from the associated points in time and returns an html page with both data integrated
 
@@ -199,16 +243,12 @@ def handler(profile):
             html (string): link to an html file with information on the profile (transect) and 
                            timeseries data.
     """    
-    """
-    first part selects the metadata
-    """
-    # Log configuration info (will appear in pywps.log)
-    logger.info(f'env settings read, os: {os.getenv("PG_USER")}')
-    logger.info(f'abspath set: {abspath}')
-    logger.info(f'location set: {location}')
-    logger.info(f'host/username: {pg_host}, {pg_user}')
-    logger.info(f'handler, profile: {profile}')
+    logger.info(f"=== Starting handler for profile: {profile} ===")
     
+    # Initialize configuration (this will now run when PyWPS is ready)
+    _initialize_config()
+    
+    logger.info("Executing metadata query")
     strsql = f"""SELECT 
                 g.transect_id as transect_id,
                 common_country_name as country,
@@ -221,28 +261,30 @@ def handler(profile):
                 join continent ct on ct.idcnt = g.idcnt
                 where g.index = {profile}"""
     
-    df = pd.read_sql_query(strsql,engine)
+    df = pd.read_sql_query(strsql, _engine)
+    logger.info(f"Metadata query returned {len(df)} rows")
     
-    #scond part gets the profile data
+    logger.info("Executing profile data query")
     strsql = f"""select datetime, shoreline_position 
                  from shorelinemonitor_series 
                  where gctr_id = '{profile}'
                  order by datetime"""
-    dfp = pd.read_sql_query(strsql,engine)
+    dfp = pd.read_sql_query(strsql, _engine)
+    logger.info(f"Profile data query returned {len(dfp)} rows")
 
-    # okay, there is an issue here, there are shorelines without points!
-    # to be exact, some figures:
-    # - gctr has 11545312 unique transect_id
-    # - shoreline_monitor_series has 7471154 unique transect ids 
-    # DIFFERENCE is 3.5 * 10^6 ... records, meaning, for 3.5 miljon profiles, there is no data available
-    # need to do something with that
-    
+    # Handle case where no data is available
     if len(dfp) == 0:
-        logger.info(f'no derived measurements available for id: {profile}')
+        logger.warning(f'No derived measurements available for profile: {profile}')
+        return None  # or return an error message
  
-    url = scatterplot(dfp,df)
- 
+    logger.info("Generating scatterplot")
+    url = scatterplot(dfp, df)
+    logger.info(f"=== Handler completed successfully, returning URL: {url} ===")
     return url
     
 def test():
-    print(handler(8918455))
+    """Test function"""
+    print(handler(2805066))
+
+if __name__ == "__main__":
+    test()
