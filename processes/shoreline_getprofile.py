@@ -59,13 +59,13 @@ def _initialize_config():
     
     
     # Load environment variables
-    print(f"Current working directory: {os.getcwd()}")
-    print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+    logger.info(f"Current working directory: {os.getcwd()}")
+    logger.info(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
     
     if os.name == 'nt':
         # Windows development
         success = load_dotenv()
-        print(f"Windows - load_dotenv() success: {success}")
+        logger.info(f"Windows - load_dotenv() success: {success}")
     else:
         # Linux server
         success = load_dotenv('/opt/pywps/.env')
