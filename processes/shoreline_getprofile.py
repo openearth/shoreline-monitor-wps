@@ -75,7 +75,7 @@ def _initialize_config():
 
     else:
         _abspath = os.path.join(project_root, 'data')
-        _location = 'https://shoreline-monitor.avi.directory.intra'
+        _location = 'https://shoreline-monitor.openearth.eu'
     
 
     
