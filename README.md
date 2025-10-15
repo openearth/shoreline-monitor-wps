@@ -10,9 +10,11 @@ or use environment.yml (set the name of the project in the yml)
 
 ## Run service commands
 
-conda activate env_name
+to activate you environment
+- conda activate env_name 
 
-python pywpws.wsgi
+navigate to the directory with pywps.wsgi and run
+- python pywpws.wsgi
 
 ## License of PyWPS
 
