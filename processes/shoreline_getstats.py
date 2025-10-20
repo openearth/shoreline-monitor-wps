@@ -285,9 +285,10 @@ def handler(profile):
 
     # Initialize configuration (this will now run when PyWPS is ready)
     _initialize_config()
-    profile = 'cl30384s00tr01162268'
+ 
     logger.info("Executing metadata query")
     strsql = f"""SELECT  geometry,
+                degrees(ST_Azimuth(st_startpoint(geometry),st_endpoint(geometry))) as bearing,
 				transect_id as transect_id,
                 sds_change_rate,
                 class_shore_type,
