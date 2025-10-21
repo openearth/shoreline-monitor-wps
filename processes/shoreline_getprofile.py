@@ -323,7 +323,7 @@ def handler(profile):
 
 def test():
     """Test function"""
-    print(handler())
+    print(handler(2422064))
 
 
 if __name__ == "__main__":
