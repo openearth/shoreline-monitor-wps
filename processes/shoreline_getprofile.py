@@ -296,8 +296,7 @@ def handler(profile):
                 FROM public.gctr g
                 join country c on c.idccn = g.idccn
                 join continent ct on ct.idcnt = g.idcnt
-                where g.transect_id = '{profile}'"""
-    #               where g.index = {profile}"""
+                where index = {profile}"""
 
     df = pd.read_sql_query(strsql, _engine)
     logger.info(f"Metadata query returned {len(df)} rows")
@@ -305,9 +304,9 @@ def handler(profile):
     logger.info("Executing profile data query")
     strsql = f"""select datetime, shoreline_position, obs_is_primary, obs_is_outlier 
                  from shorelinemonitor_series 
-                 where transect_id = '{profile}'
+                 where gctr_id = '{profile}'
                  order by datetime"""
-    #                where gctr_id = '{profile}'
+    
     dfp = pd.read_sql_query(strsql, _engine)
     logger.info(f"Profile data query returned {len(dfp)} rows")
 
@@ -324,9 +323,7 @@ def handler(profile):
 
 def test():
     """Test function"""
-    print(
-        handler("cl30793s01tr02935165")
-    )  # 2805066 #"cl30793s01tr02935165" #"cl33097s00tr00002666"
+    print(handler())
 
 
 if __name__ == "__main__":
