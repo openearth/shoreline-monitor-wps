@@ -33,6 +33,7 @@
 import os
 import time
 import pandas as pd
+import geopandas as gpd
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 import configparser
@@ -274,8 +275,8 @@ def handler(profile):
     and data from the associated points in time and returns an html page with both data integrated
 
     Args:
-        profile (integer): profile id of the transect/profile, bear in mind,
-        this is not the transect_id, but a unique index generated after reading the data
+        profile (integer): profile is equal to index in the gctr table, bear in mind,
+        this is not the transect_id, but a unique index generated after reading/importing the data
 
     Returns:
         html (string): link to an html file with information on the profile (transect) and
@@ -287,19 +288,20 @@ def handler(profile):
     _initialize_config()
  
     logger.info("Executing metadata query")
-    strsql = f"""SELECT  geometry,
+    strsql = f"""SELECT  st_transform(geometry,3857) as geom,
                 degrees(ST_Azimuth(st_startpoint(geometry),st_endpoint(geometry))) as bearing,
-				transect_id as transect_id,
+				transect_id,
                 sds_change_rate,
                 class_shore_type,
-                class_coastal_type
+                class_coastal_type 
                 from gctr
                 where st_dwithin(st_transform(geometry,3857),
                     (select st_transform(geometry,3857) from gctr 
-                    where transect_id = '{profile}')
+                    where index = {profile})
                     ,5000)"""
 
-    df = pd.read_sql_query(strsql, _engine)
+    df = gpd.read_postgis(strsql, _engine)
+
     if os.name =='nt':
         print(f"Metadata query returned {len(df)} rows")
     else:
@@ -307,13 +309,20 @@ def handler(profile):
     
 
     logger.info("Executing profile data query")
+    # create a list of transect_ids in order to select all corresponding 
+    # shoreline-monitor-series data in following query
     lsttransects = ','.join(f"'{tid}'" for tid in df['transect_id'])
-    strsql = f"""select transect_id, geometry, datetime, shoreline_position, obs_is_primary
+    strsql = f"""select transect_id, 
+                    st_transform(geometry,3857) as geom, 
+                    datetime, 
+                    shoreline_position, 
+                    obs_is_primary
                  from shorelinemonitor_series 
                  where transect_id in ({lsttransects})
                  order by datetime"""
     
-    dfp = pd.read_sql_query(strsql, _engine)
+    dfp = gpd.read_postgis(strsql, _engine)
+
     if os.name == 'nt':
         print(f"Profile data query returned {len(dfp)} rows")
     else:
@@ -324,7 +333,7 @@ def handler(profile):
         logger.warning(f"No derived measurements available for profile: {profile}")
         return None  # or return an error message
 
-    logger.info("Generating scatterplot")
+    logger.info("Generating 6 plots")
 
     # Do something below
     # url = scatterplot(dfp, df) change line below

@@ -29,7 +29,7 @@
 # Sign up to recieve regular updates of this function, and to contribute
 # your own tools.
 
-# http://localhost:5000/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getstats&datainputs=profileid={"profileid":2805066}
+# http://localhost:5000/wps?service=wps&request=Execute&version=2.0.0&Identifier=wps_shoreline_getstats&datainputs=profileid={"profileid":10883298}
 # 
 # production:
 # getcapabilities https://shoreline-monitor.avi.directory.intra/wps?service=wps&request=getcapabilities
