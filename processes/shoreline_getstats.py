@@ -202,17 +202,49 @@ def handler(profile):
     filter, plot = PostProcShoreline(transect_name,dfp)
     plot_GCTR = PostProcGCTR(df,filter,selected_transect=transect_name)
 
-    # Specify plotting size and layouting
-    map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
-    mpl_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=400)
-    fig4_pane = pn.pane.Matplotlib(plot[0], width=1200, tight=True)
-    fig5_pane = pn.pane.Matplotlib(plot[1], width=400,  tight=True)
-    fig6_pane = pn.pane.Matplotlib(plot[2], width=400, tight=True)
-
-    layout = pn.Column(
-        pn.Row(map_pane, plot_GCTR[2],height=550,width=1200), 
-        pn.Row(mpl_pane, fig5_pane, fig6_pane, width=1200), 
-        pn.Row(fig4_pane,width=1200)  
+    # Create lightweight HTML with minimal JavaScript
+    import plotly.offline as pyo
+    from plotly.subplots import make_subplots
+    
+    # Create a single dashboard with all plots
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=('Time Series', 'Shoreline Position Heatmap',
+                       'Annual Change Heatmap', 'Coastal Typology'),
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}]],
+        row_heights=[0.5, 0.5],
+        vertical_spacing=0.15,
+        horizontal_spacing=0.1
+    )
+    
+    # Add time series plot
+    time_series_fig = plot[0]
+    for trace in time_series_fig.data:
+        fig.add_trace(trace, row=1, col=1)
+    
+    # Add heatmap plots
+    heatmap_pos_fig = plot[1]
+    for trace in heatmap_pos_fig.data:
+        fig.add_trace(trace, row=1, col=2)
+    
+    heatmap_diff_fig = plot[2]
+    for trace in heatmap_diff_fig.data:
+        fig.add_trace(trace, row=2, col=1)
+    
+    # Add bar chart
+    bar_fig = plot_GCTR[1]
+    for trace in bar_fig.data:
+        fig.add_trace(trace, row=2, col=2)
+    
+    # Optimize layout for speed
+    fig.update_layout(
+        title=f'Shoreline Analysis - Profile {profile}',
+        height=800,
+        width=1200,
+        showlegend=True,
+        template='plotly_white',
+        modebar_remove=['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'resetScale2d']
     )
 
     # define unique id based on current time
@@ -221,8 +253,17 @@ def handler(profile):
 
     # define htmlfile to write to serverside place and store
     htmlfile = os.path.join(_abspath, pltname)
-    logger.info(f"Writing plot to: {htmlfile}")
-    layout.save(htmlfile, embed=True)
+    logger.info(f"Writing optimized plot to: {htmlfile}")
+    
+    # Save with minimal configuration for fastest loading
+    pyo.plot(fig, filename=htmlfile, auto_open=False, 
+             config={
+                 'displayModeBar': True, 
+                 'displaylogo': False,
+                 'modeBarButtonsToRemove': ['pan2d', 'lasso2d', 'select2d', 'autoScale2d'],
+                 'responsive': True
+             },
+             include_plotlyjs='cdn')
 
     logger.info("Plot file created")
 

@@ -47,6 +47,8 @@ from scipy.stats import median_abs_deviation
 from sklearn.ensemble import IsolationForest
 import panel as pn
 import logging
+import plotly.graph_objs as go
+import plotly.express as px
 
 hv.extension("bokeh")
 matplotlib.use('Agg')   # Use a non-GUI backend for PNG output
@@ -156,16 +158,14 @@ def CalculateNewRate(df):
     return pd.DataFrame(new_df)
 
 def PlotTimeStackPosition(pivot):
-    """Plotting table of spatio-temporal shoreline position:
+    """Plotting interactive heatmap of spatio-temporal shoreline position:
 
     Args:      
         pivot: table of time and shoreline position
 
     Returns:
-        plot: plot object
+        plot: interactive Plotly heatmap figure object
     """ 
-
-    fig, ax = plt.subplots(figsize=(10, 8))
 
     # Set the plot range considering the quantiles
     lower_quantile = pivot.min().quantile(0.025)
@@ -175,44 +175,42 @@ def PlotTimeStackPosition(pivot):
 
     # Ensure that the color limits are symmetric around zero
     max_abs_range = max(abs(min_range), abs(max_range))
-    clim = (-max_abs_range, max_abs_range)
 
-    cmap = cc.m_diverging_gwr_55_95_c38.copy()
-    cmap.set_bad(color="gray")
+    fig = go.Figure(data=go.Heatmap(
+        x=pivot.index,
+        y=pivot.columns,
+        z=pivot.values.T,
+        colorscale='RdYlGn',
+        zmid=0,
+        zmin=-max_abs_range,
+        zmax=max_abs_range,
+        colorbar=dict(title='Shoreline Position (m)'),
+        hovertemplate='Distance: %{x} m<br>Year: %{y}<br>Position: %{z:.2f} m<extra></extra>'
+    ))
 
-
-    c = ax.pcolormesh(#pivot,
-        pivot.index,             # datetime axis
-        pivot.columns,           # transect axis
-        pivot.values.T,            # grid of values
-        cmap=cmap,           # color map
-        clim=clim,
-        shading='auto',
-        
+    fig.update_layout(
+        title='Spatio-temporal of Shoreline Position from 2023 Reference Line',
+        xaxis_title='Distance along Coastline (m)',
+        yaxis_title='Year',
+        height=600,
+        width=400,
+        # Optimize for fastest loading
+        template='plotly_white',
+        modebar_remove=['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'resetScale2d'],
+        font=dict(size=10)  # Smaller fonts for faster rendering
     )
 
-    # plot option
-    ax.set_ylabel("Year")
-    ax.set_xlabel("Distance along Coastline (m)")
-    ax.set_title("Spatio-temporal of Shoreline Position from 2023 Reference Line")
-    fig.colorbar(c, ax=ax, label="Shoreline Position (m)")
-    ax.yaxis.set_major_locator(mdates.YearLocator())
-    step = np.round(pivot.index[-1]/1000)*1000/10
-    ax.set_xticks(np.arange(min(pivot.index), max(pivot.index), step))
-    plt.tight_layout()
-    plt.close()
-
-    logger.info(f"=== Time stack plot of shoreline position succesfully created ===")
+    logger.info(f"=== Interactive time stack plot of shoreline position successfully created ===")
     return fig
 
 def PlotTimeStackDifference(pivot):
-    """Plotting table of spatio-temporal annual shoreline change:
+    """Plotting interactive heatmap of spatio-temporal annual shoreline change:
 
     Args:      
         pivot: table of time and shoreline position
 
     Returns:
-        plot: plot object
+        plot: interactive Plotly heatmap figure object
     """ 
     
     # Calculate annual change
@@ -226,74 +224,101 @@ def PlotTimeStackDifference(pivot):
 
     # Ensure that the color limits are symmetric around zero
     max_abs_range = max(abs(min_range), abs(max_range))
-    clim = (-max_abs_range, max_abs_range)
 
+    fig = go.Figure(data=go.Heatmap(
+        x=pivot_change.index,
+        y=pivot_change.columns,
+        z=pivot_change.values.T,
+        colorscale='RdYlGn',
+        zmid=0,
+        zmin=-max_abs_range,
+        zmax=max_abs_range,
+        colorbar=dict(title='Shoreline Change (m)'),
+        hovertemplate='Distance: %{x} m<br>Year: %{y}<br>Change: %{z:.2f} m<extra></extra>'
+    ))
 
-    fig, ax = plt.subplots(figsize=(10, 8))
-
-    cmap = cc.m_diverging_gwr_55_95_c38.copy()
-    cmap.set_bad(color="gray")
-
-    cdif = ax.pcolormesh(
-        pivot_change.index,             # datetime axis
-        pivot_change.columns,           # transect axis
-        pivot_change.values.T,            # grid of values
-        cmap=cmap,           # color map
-        clim=clim,
+    fig.update_layout(
+        title='Spatio-temporal of Yearly Shoreline Change',
+        xaxis_title='Distance along Coastline (m)',
+        yaxis_title='Year',
+        height=600,
+        width=400,
+        # Optimize for faster loading
+        template='plotly_white',
+        modebar_remove=['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'resetScale2d'],
+        font=dict(size=10)  # Smaller fonts for faster rendering
     )
 
-    # plot option
-    ax.set_ylabel("Year")
-    ax.set_xlabel("Distance along Coastline (m)")
-    ax.set_title("Spatio-temporal of Yearly Shoreline Change")
-    fig.colorbar(cdif, ax=ax, label="Shoreline Change (m)")
-    ax.yaxis.set_major_locator(mdates.YearLocator())
-    step = np.round(pivot.index[-1]/1000)*1000/10
-    ax.set_xticks(np.arange(min(pivot.index), max(pivot.index), step))
-    plt.tight_layout()
-    plt.close()
-
-    logger.info(f"=== Time stack plot of annual shoreline change succesfully created ===")
+    logger.info(f"=== Interactive time stack plot of annual shoreline change successfully created ===")
     return fig
 
 
 def PlotSelectedTimeSeries(pivot,selected_transect):
-    """Plotting table of spatio-temporal annual shoreline change:
+    """Plotting interactive time series of selected transect compared to neighbors:
 
     Args:      
         pivot: table of time and shoreline position
+        selected_transect: index of the selected transect
 
     Returns:
-        plot: plot object
+        plot: interactive Plotly figure object
     """ 
     
-    fig, ax = plt.subplots(figsize=(10, 5))
-
-    # plot every individual transect and highlight the selected transect
+    fig = go.Figure()
+    
+    # Plot neighboring transects
     for i in range(len(pivot)):
-        if i == 0:
-            ax.plot(pivot.columns, pivot.iloc[i],c='lightgrey',label='Neighbouring Transect')
-        
         if i == selected_transect:
             continue
+        fig.add_trace(go.Scatter(
+            x=pivot.columns,
+            y=pivot.iloc[i],
+            mode='lines',
+            line=dict(color='lightgrey', width=1),
+            name='Neighbouring Transect',
+            showlegend=(i == 0),
+            hovertemplate='Date: %{x}<br>Position: %{y:.2f} m<extra></extra>'
+        ))
 
-        ax.plot(pivot.columns, pivot.iloc[i],c='lightgrey')
+    # Highlight selected transect
+    fig.add_trace(go.Scatter(
+        x=pivot.columns,
+        y=pivot.iloc[selected_transect],
+        mode='lines+markers',
+        line=dict(color='red', width=3),
+        marker=dict(size=6, color='red'),
+        name='Selected Transect',
+        hovertemplate='Date: %{x}<br>Position: %{y:.2f} m<extra></extra>'
+    ))
+    
+    fig.update_layout(
+        title='Shoreline Position from 2023 Reference Line',
+        xaxis_title='Year',
+        yaxis_title='Shoreline Position (m)',
+        hovermode='closest',
+        height=500,
+        width=1200,
+        showlegend=True,
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01
+        ),
+        # Optimize for fastest loading
+        template='plotly_white',
+        modebar_remove=['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'resetScale2d'],
+        font=dict(size=10)  # Smaller fonts for faster rendering
+    )
+    
+    # Set x-axis to show years
+    fig.update_xaxes(
+        tickmode='linear',
+        tick0=pivot.columns.min(),
+        dtick=1
+    )
 
-    ax.plot(pivot.columns, pivot.iloc[selected_transect], color='red',label='Selected Transect',marker='o')
-
-    # plot option
-    ax.xaxis.set_major_locator(mdates.YearLocator())
-    plt.xticks(rotation=90)
-    plt.xlim([pivot.columns.min(),pivot.columns.max()])
-    plt.grid(alpha=0.25)
-    plt.xlabel('Year')
-    plt.ylabel('Shoreline Position (m)')
-    plt.title('Shoreline Position from 2023 Reference Line')
-    plt.legend()
-    plt.tight_layout()
-    plt.close()
-
-    logger.info(f"=== Time series plot succesfully created ===")
+    logger.info(f"=== Interactive time series plot successfully created ===")
     return fig
 
 
@@ -533,18 +558,15 @@ def PlotCoastlineRate(df,selected_transect=None):
 
 
 def PlotBarCoastalChange(df,selected_transect=None,plot_outlier=False):
-    """Bar plot of coastal typology
+    """Interactive bar plot of coastal typology
 
     Args:      
         df: dataframe of GCTR
         selected_transect: name of the selected transect to highlight the transect position
-
-        optional
-        transect_name: name of the selected transect to highlight the transect position
         plot_outlier: highlight outlier in the figure based on local MAD and isolation forest
 
     Returns:
-        plot: plot object
+        plot: interactive Plotly figure object
     """ 
 
     def color_palletes():
@@ -641,96 +663,136 @@ def PlotBarCoastalChange(df,selected_transect=None,plot_outlier=False):
                     'class_shore_type','class_coastal_type']].sort_values(by=['transect_id'],ascending=False)
     sorted_df['dist'] = np.arange(0,len(sorted_df)*100,100)
 
-    # Create figure
-    fig = plt.figure(figsize=(10,7))
+    # Create subplots
+    from plotly.subplots import make_subplots
+    fig = make_subplots(
+        rows=2, cols=1,
+        row_heights=[0.75, 0.25],
+        subplot_titles=('Coastline Change Rate (m/year)', 'Coastal & Shore Type'),
+        vertical_spacing=0.1
+    )
 
-    # Prepare subplots using GridSpec
-    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.1) 
-    bar_width = 100
-    fig.supxlabel('Distance along Coastline (m)',fontsize=12, y=0.03)
-
-    # Plot Bar graph of coastline change rate
-    ax0 = fig.add_subplot(gs[0])
+    # Main bar chart
     colors = ['green' if val >= 0 else 'red' for val in sorted_df['sds_change_rate']]
-    ax0.bar(sorted_df['dist'],sorted_df['sds_change_rate'],
-            color=colors,width=bar_width,align='edge')
-    ax0.set_xlim(min(sorted_df['dist']),max(sorted_df['dist']+100))
-    ax0.set_ylabel('Coastline Change Rate (m/year)')
-    ymin = min(1.6*min(sorted_df['sds_change_rate']),-7)
-    ymax = max(1.6*max(sorted_df['sds_change_rate']),7)
-    ax0.set_ylim(ymin,ymax)
-    ax0.grid(alpha=0.6)
+    fig.add_trace(
+        go.Bar(
+            x=sorted_df['dist'],
+            y=sorted_df['sds_change_rate'],
+            marker_color=colors,
+            width=100,
+            name='Change Rate',
+            hovertemplate='Distance: %{x} m<br>Rate: %{y:.2f} m/year<br>Transect: %{customdata}<extra></extra>',
+            customdata=sorted_df['transect_id']
+        ),
+        row=1, col=1
+    )
 
+    # Add annotation for selected transect
+    if selected_transect:
+        transect_loc = sorted_df[sorted_df['transect_id'] == selected_transect]
+        if not transect_loc.empty:
+            xa = transect_loc['dist'].values[0] + 50
+            ya = transect_loc['sds_change_rate'].values[0]
+            fig.add_annotation(
+                x=xa, y=ya,
+                text="Selected Transect",
+                showarrow=True,
+                arrowhead=2,
+                arrowsize=1,
+                arrowwidth=2,
+                arrowcolor="black",
+                ax=0, ay=-40,
+                row=1, col=1
+            )
 
-    # Plot arrow pointing the position and make the annotation
-    transect_loc = sorted_df[sorted_df['transect_id'] == selected_transect]
-    xa = transect_loc['dist'].values[0] +50
-    ya = transect_loc['sds_change_rate'].values[0]
-    xa_text = xa 
-    ya_text = 1.5 * ya + 5 * np.sign(ya)
-    ax0.annotate(
-        'Selected Transect',
-        xy=(xa, ya), xytext=(xa_text, ya_text),
-        arrowprops=dict(facecolor='black', shrink=0.05),
-        ha='center'
-        )
-
-
-    # plot flagged outlier
+    # Plot outliers if requested
     if plot_outlier:
         mad_mask = local_modified_zscore_outlier(sorted_df['sds_change_rate'], k=5, thresh=2.5)
         iso_mask = isolation_forest(sorted_df['sds_change_rate'],c = 0.02,random_state = 42)
-        ax0.scatter(sorted_df['dist'][mad_mask], sorted_df['sds_change_rate'][mad_mask], 
-                    color='orange', label='MAD outlier', s=60)
-        ax0.scatter(sorted_df['dist'][iso_mask], sorted_df['sds_change_rate'][iso_mask], 
-                    color='black', label='IF outlier', s=60)
+        
+        if mad_mask.any():
+            fig.add_trace(
+                go.Scatter(
+                    x=sorted_df['dist'][mad_mask],
+                    y=sorted_df['sds_change_rate'][mad_mask],
+                    mode='markers',
+                    marker=dict(color='orange', size=10),
+                    name='MAD Outlier',
+                    hovertemplate='Distance: %{x} m<br>Rate: %{y:.2f} m/year<extra></extra>'
+                ),
+                row=1, col=1
+            )
+        
+        if iso_mask.any():
+            fig.add_trace(
+                go.Scatter(
+                    x=sorted_df['dist'][iso_mask],
+                    y=sorted_df['sds_change_rate'][iso_mask],
+                    mode='markers',
+                    marker=dict(color='black', size=10),
+                    name='IF Outlier',
+                    hovertemplate='Distance: %{x} m<br>Rate: %{y:.2f} m/year<extra></extra>'
+                ),
+                row=1, col=1
+            )
 
-    # Plot Stacked Bar for coastal type and shore type
-    ax1 = fig.add_subplot(gs[1], sharex=ax0)
-    colors = [coastal_colors[f][0] for f in sorted_df['class_coastal_type']]
-    ax1.bar(sorted_df['dist'], height=0.5, bottom=0, width=bar_width, color=colors, align='edge',
-            edgecolor=None)
+    # Stacked bars for coastal and shore types
+    coastal_colors_list = [coastal_colors[f][0] for f in sorted_df['class_coastal_type']]
+    shore_colors_list = [shore_colors[f][0] for f in sorted_df['class_shore_type']]
 
-    colors = [shore_colors[f][0] for f in sorted_df['class_shore_type']]
-    ax1.bar(sorted_df['dist'], height=0.5, bottom=0.5, width=bar_width, color=colors, align='edge',
-              edgecolor=None)
+    fig.add_trace(
+        go.Bar(
+            x=sorted_df['dist'],
+            y=[0.5] * len(sorted_df),
+            marker_color=coastal_colors_list,
+            width=100,
+            name='Coastal Type',
+            hovertemplate='Distance: %{x} m<br>Coastal Type: %{customdata}<extra></extra>',
+            customdata=sorted_df['class_coastal_type'],
+            showlegend=False
+        ),
+        row=2, col=1
+    )
 
+    fig.add_trace(
+        go.Bar(
+            x=sorted_df['dist'],
+            y=[0.5] * len(sorted_df),
+            marker_color=shore_colors_list,
+            width=100,
+            name='Shore Type',
+            hovertemplate='Distance: %{x} m<br>Shore Type: %{customdata}<extra></extra>',
+            customdata=sorted_df['class_shore_type'],
+            showlegend=False
+        ),
+        row=2, col=1
+    )
 
-    # Set labels 
-    ax1.set_ylim([0,1])
-    ax1.set_yticks([0.25, 0.75])  # positions
-    ax1.set_yticklabels(['Coastal\nType\n\n', 'Shore\nType\n\n'],rotation=90,va='center',ha='center')  # new labels
+    # Update layout
+    fig.update_layout(
+        title='Coastal Change Rate and Typology',
+        height=700,
+        width=1000,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        # Optimize for faster loading
+        template='plotly_white',
+        modebar_remove=['pan2d', 'lasso2d', 'select2d', 'autoScale2d', 'resetScale2d'],
+        font=dict(size=10)  # Smaller fonts for faster rendering
+    )
 
+    # Update axes
+    fig.update_xaxes(title_text="Distance along Coastline (m)", row=2, col=1)
+    fig.update_yaxes(title_text="Coastline Change Rate (m/year)", row=1, col=1)
+    fig.update_yaxes(title_text="Type", row=2, col=1, range=[0, 1])
 
-    # Set legend for coastal/shore type available in bounding box
-    handles = []
-    used_shore_colors = {k: v for k, v in shore_colors.items() if k in sorted_df['class_shore_type'].unique()}
-    used_coastal_colors = {k: v for k, v in coastal_colors.items() if k in sorted_df['class_coastal_type'].unique()}
-
-    # Legend set for Shore Type
-    handles.append(mpatches.Patch(color='none', label="Shore Type"))  
-    for num,(key, values) in enumerate(used_shore_colors.items()):
-        handles.append(mpatches.Patch(color=values[0], label=values[1]))
-    for i in range(len(shore_colors)-1-num):
-        handles.append(mpatches.Patch(color='none', label=" "))
-
-    # Legend set for Coastal Type
-    handles.append(mpatches.Patch(color='none', label="Coastal Type"))
-    for num, (key, values) in enumerate(used_coastal_colors.items()):
-        handles.append(mpatches.Patch(color=values[0], label=values[1]))
-    for i in range(len(coastal_colors)-1-num):
-        handles.append(mpatches.Patch(color='none', label=" "))
-
-    # Plot legend to figure
-    legend = plt.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.5, -0.5),
-                   ncol=3, frameon=True, handlelength=1)
-    
-    for text, handle in zip(legend.get_texts(), legend.legend_handles):
-        if handle.get_facecolor()[0] == 0 and handle.get_facecolor()[3] == 0: 
-            text.set_weight("bold")
-    plt.close()
-
-    logger.info(f"=== Bar plot succesfully created ===")
+    logger.info(f"=== Interactive bar plot successfully created ===")
     return fig
 
 
