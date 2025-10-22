@@ -86,3 +86,30 @@ VACUUM (FULL) public.country;
 VACUUM (FULL) public.continent;
 VACUUM (FULL) public.shorelinemonitor_series;
 
+-- Performance optimization for 5km radius spatial queries
+-- Add pre-transformed geometry column in EPSG:3857
+ALTER TABLE gctr ADD COLUMN IF NOT EXISTS geom_3857 geometry(LineString, 3857);
+
+-- Populate with transformed geometries
+UPDATE gctr SET geom_3857 = st_transform(geometry, 3857);
+
+-- Create spatial index on the new column
+CREATE INDEX IF NOT EXISTS idx_gctr_geom_3857 ON gctr USING GIST (geom_3857);
+
+-- Keep it synchronized (optional - for future inserts/updates)
+CREATE OR REPLACE FUNCTION update_gctr_geom_3857()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.geom_3857 = st_transform(NEW.geometry, 3857);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_update_gctr_geom_3857
+    BEFORE INSERT OR UPDATE OF geometry ON gctr
+    FOR EACH ROW
+    EXECUTE FUNCTION update_gctr_geom_3857();
+
+-- Analyze table to update statistics
+ANALYZE gctr;
+

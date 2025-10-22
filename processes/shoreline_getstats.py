@@ -121,17 +121,23 @@ def handler(profile):
     _initialize_config()
  
     logger.info("Executing metadata query")
-    strsql = f"""SELECT  st_transform(geometry,3857) as geom,
-                degrees(ST_Azimuth(st_startpoint(geometry),st_endpoint(geometry))) as bearing,
-				transect_id,
-                sds_change_rate,
-                class_shore_type,
-                class_coastal_type 
-                from gctr
-                where st_dwithin(st_transform(geometry,3857),
-                    (select st_transform(geometry,3857) from gctr 
-                    where index = {profile})
-                    ,5000)"""
+    strsql = f"""
+        WITH target_profile AS (
+            SELECT geom_3857, index
+            FROM gctr
+            WHERE index = {profile}
+        )
+        SELECT 
+            g.geom_3857 as geom,
+            degrees(ST_Azimuth(st_startpoint(g.geometry), st_endpoint(g.geometry))) as bearing,
+            g.transect_id,
+            g.sds_change_rate,
+            g.class_shore_type,
+            g.class_coastal_type 
+        FROM gctr g
+        CROSS JOIN target_profile t
+        WHERE st_dwithin(g.geom_3857, t.geom_3857, 5000)
+    """
 
     df = gpd.read_postgis(strsql, _engine)
 
