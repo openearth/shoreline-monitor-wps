@@ -1,3 +1,31 @@
+#!/usr/bin/env python3
+
+# -*- coding: utf-8 -*-
+# Copyright notice
+#   --------------------------------------------------------------------
+#   Copyright (C) 2025 Deltares
+#     Irham Adrie Hakiki
+#
+#   This library is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This library is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this library.  If not, see <http://www.gnu.org/licenses/>.
+#   --------------------------------------------------------------------
+#
+# This tool is part of <a href="http://www.OpenEarth.eu">OpenEarthTools</a>.
+# OpenEarthTools is an online collaboration to share and manage data and
+# programming tools in an open source, version controlled environment.
+# Sign up to recieve regular updates of this function, and to contribute
+# your own tools.
+
 import matplotlib
 
 import matplotlib.gridspec as gridspec
@@ -270,43 +298,42 @@ def PlotSelectedTimeSeries(pivot,selected_transect):
 
 
 def PostProcGCTR(df,filtered_df,selected_transect=None):
-        """Post-processing GCTR data into 3 plots:
-        1. Time series of selected transect compared to the neighbor
-        2. Time stack of shoreline position
-        3. Time stact of shoreline change
+    """Post-processing GCTR data into 3 plots:
+    1. Time series of selected transect compared to the neighbor
+    2. Time stack of shoreline position
+    3. Time stact of shoreline change
 
-        Args:      
-            df: dataframe of GCTR
-            filtered_df: dataframe with the transect name (and new ambient rate)
+    Args:      
+        df: dataframe of GCTR
+        filtered_df: dataframe with the transect name (and new ambient rate)
 
-            optional
-            transect_name: name of the selected transect to highlight the transect position
-  
-        Returns:
-            plot: list of plot object
-        """ 
+        optional
+        transect_name: name of the selected transect to highlight the transect position
 
-        # filter GCTR dataframe with transect data that available in shoreline series
-        transect_id = filtered_df['transect_id'].values
+    Returns:
+        plot: list of plot object
+    """ 
+    # filter GCTR dataframe with transect data that available in shoreline series
+    transect_id = filtered_df['transect_id'].values
 
-        # apply a new rate (if applicable)
-        if 'sds_change_rate' in filtered_df.columns:
-            print('----------Applying new rate')
-            df['sds_change_rate'] = df['transect_id'].map(filtered_df.set_index('transect_id')['sds_change_rate'])
-        
-        reduced_transect = df[df['transect_id'].isin(transect_id)].dropna(subset='sds_change_rate')
+    # apply a new rate (if applicable)
+    if 'sds_change_rate' in filtered_df.columns:
+        print('----------Applying new rate')
+        df['sds_change_rate'] = df['transect_id'].map(filtered_df.set_index('transect_id')['sds_change_rate'])
+    
+    reduced_transect = df[df['transect_id'].isin(transect_id)].dropna(subset='sds_change_rate')
 
-        # call to plotting function
-        logger.info(f"=== Creating ambient rate map ===")
-        plot1 = PlotCoastlineRate(reduced_transect,selected_transect)
-        logger.info(f"=== Creating bar plot ===")
-        plot2 = PlotBarCoastalChange(reduced_transect,selected_transect)
-        logger.info(f"=== Creating table summary ===")
-        plot3 = PlotTable(reduced_transect)
+    # call to plotting function
+    logger.info(f"=== Creating ambient rate map ===")
+    plot1 = PlotCoastlineRate(reduced_transect,selected_transect)
+    logger.info(f"=== Creating bar plot ===")
+    plot2 = PlotBarCoastalChange(reduced_transect,selected_transect)
+    logger.info(f"=== Creating table summary ===")
+    plot3 = PlotTable(reduced_transect)
 
-        plot = [plot1,plot2,plot3]
+    plot = [plot1,plot2,plot3]
 
-        return plot
+    return plot
 
 
 def PlotCoastlineRate(df,selected_transect=None):
