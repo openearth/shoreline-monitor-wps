@@ -63,8 +63,6 @@ def _initialize_config():
     # Load configuration file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
-    if os.name == 'nt':
-        project_root = os.path.join(project_root,'processes')
     config_file = os.path.join(project_root, "configuration.txt")
 
     config = configparser.ConfigParser()
