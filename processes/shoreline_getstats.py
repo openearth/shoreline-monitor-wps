@@ -41,6 +41,7 @@ import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
+from .generate_plot import *
 
 logger = logging.getLogger("PYWPS")
 
@@ -335,9 +336,60 @@ def handler(profile):
 
     logger.info("Generating 6 plots")
 
-    # Do something below
+
+    def find_transect_name(profile):
+        """Function for finding transect name from profile id
+
+        Args:
+            profile: profile number in integer
+
+        Returns:
+            string: name of corresponding transect
+        """ 
+
+    
+        strsql = f"""SELECT 
+                transect_id,
+                sds_change_rate,
+                class_shore_type,
+                class_coastal_type 
+                from gctr
+                where index = '{profile}'"""
+
+        df = pd.read_sql_query(strsql, _engine)
+        return df['transect_id'].values[0]
+
+
+    transect_name = find_transect_name(profile)
+    filter, plot = PostProcShoreline(transect_name,dfp)
+    plot_GCTR = PostProcGCTR(df,filter,selected_transect=transect_name)
+
+    # Specify plotting size and layouting
+    map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
+    mpl_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=400)
+    fig4_pane = pn.pane.Matplotlib(plot[0], width=1200, tight=True)
+    fig5_pane = pn.pane.Matplotlib(plot[1], width=400,  tight=True)
+    fig6_pane = pn.pane.Matplotlib(plot[2], width=400, tight=True)
+
+    layout = pn.Column(
+        pn.Row(map_pane, plot_GCTR[2],height=550,width=1200), 
+        pn.Row(mpl_pane, fig5_pane, fig6_pane, width=1200), 
+        pn.Row(fig4_pane,width=1200)  
+    )
+
+    # define unique id based on current time
+    id = str(int(time.time() * 1000))
+    pltname = f"stat_{id}.html"
+
+    # define htmlfile to write to serverside place and store
+    htmlfile = os.path.join(_abspath, pltname)
+    logger.info(f"Writing plot to: {htmlfile}")
+    layout.save(htmlfile, embed=True)
+
+    logger.info("Plot file created")
+
     # url = scatterplot(dfp, df) change line below
-    url = None
+    url = f"{_location}/data/{pltname}"
     logger.info(f"=== Handler completed successfully, returning URL: {url} ===")
     return url
 
@@ -345,8 +397,8 @@ def handler(profile):
 def test():
     """Test function"""
     print(
-        handler("cl30793s01tr02935165")
-    )  # 2805066 #"cl30793s01tr02935165" #"cl33097s00tr00002666"
+        handler(2015066)
+    )  # 2805066 #"cl30793s01tr02935165" #"cl33097s00tr00002666" 2805066
 
 
 if __name__ == "__main__":
