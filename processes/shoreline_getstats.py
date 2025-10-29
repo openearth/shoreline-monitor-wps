@@ -42,7 +42,8 @@ import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
-from .generate_plot import *
+# from .generate_plot import *
+from .generate_dynamic_plot import *
 
 logger = logging.getLogger("PYWPS")
 
@@ -202,17 +203,25 @@ def handler(profile):
     filter, plot = PostProcShoreline(transect_name,dfp)
     plot_GCTR = PostProcGCTR(df,filter,selected_transect=transect_name)
 
-    # Specify plotting size and layouting
+    # # Specify plotting size and layouting for static plot
+    # map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
+    # bar_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=700)
+    # ts_pane = pn.pane.Matplotlib(plot[0], width=1200, tight=True)
+    # tst_pane = pn.pane.Matplotlib(plot[1], width=500,  height=400, tight=True)
+    # tsd_pane = pn.pane.Matplotlib(plot[2], width=500, height=400, tight=True)
+
+    # # Specify plotting size and layouting for interactive plot
     map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
-    mpl_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=400)
-    fig4_pane = pn.pane.Matplotlib(plot[0], width=1200, tight=True)
-    fig5_pane = pn.pane.Matplotlib(plot[1], width=400,  tight=True)
-    fig6_pane = pn.pane.Matplotlib(plot[2], width=400, tight=True)
+    bar_pane = pn.pane.HoloViews(plot_GCTR[1], width=700)
+    table_pane = pn.Column(pn.Spacer(height=100),plot_GCTR[2])
+    ts_pane = pn.pane.HoloViews(plot[0], width=1200)
+    tst_pane = pn.pane.HoloViews(plot[1])
+    tsd_pane = pn.pane.HoloViews(plot[2],)
 
     layout = pn.Column(
-        pn.Row(map_pane, plot_GCTR[2],height=550,width=1200), 
-        pn.Row(mpl_pane, fig5_pane, fig6_pane, width=1200), 
-        pn.Row(fig4_pane,width=1200)  
+        pn.Row(map_pane, table_pane,height=550), 
+        pn.Row(bar_pane, pn.Column(tst_pane, tsd_pane)), 
+        pn.Row(ts_pane)  
     )
 
     # define unique id based on current time
