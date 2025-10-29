@@ -9,7 +9,6 @@
 #     Gerrit Hendriksen
 #     gerrit.hendriksen@deltares.nl
 #     Irham Adrie Hakiki
-
 #
 #   This library is free software: you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -156,7 +155,8 @@ def handler(profile):
                     st_transform(geometry,3857) as geom, 
                     datetime, 
                     shoreline_position, 
-                    obs_is_primary
+                    obs_is_primary,
+                    obs_is_outlier
                  from shorelinemonitor_series 
                  where transect_id in ({lsttransects})
                  order by datetime"""
@@ -185,8 +185,6 @@ def handler(profile):
         Returns:
             string: name of corresponding transect
         """ 
-
-    
         strsql = f"""SELECT 
                 transect_id,
                 sds_change_rate,
@@ -202,7 +200,7 @@ def handler(profile):
     transect_name = find_transect_name(profile)
     filter, plot = PostProcShoreline(transect_name,dfp)
     plot_GCTR = PostProcGCTR(df,filter,selected_transect=transect_name)
-
+    
     # # Specify plotting size and layouting for static plot
     # map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
     # bar_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=700)
