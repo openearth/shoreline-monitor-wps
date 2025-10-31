@@ -12,16 +12,16 @@ dependencies:
   - psycopg2-binary
   - plotly
   - nbformat
+  - geopandas
+  - holoviews
+  - hvplot
+  - colorcet
+  - numpy
+  - pandas
+  - scipy
   - scikit-learn
   - panel
-  - holoviews
   - geoviews
-  - hvplot
-  - numpy
-  - matplotlib
-  - shapely
-  - scipy
-  - colorcet
 
   - pip:
     - coastpy

@@ -96,6 +96,7 @@ def _initialize_config():
         raise
 
     _config_initialized = True
+    return _abspath
 
 
 def scatterplot(df, dfm):
