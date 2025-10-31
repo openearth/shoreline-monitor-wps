@@ -211,7 +211,12 @@ def handler(profile):
     # # Specify plotting size and layouting for interactive plot
     map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
     bar_pane = pn.pane.HoloViews(plot_GCTR[1], width=700)
-    table_pane = pn.Column(pn.Spacer(height=100),plot_GCTR[2])
+    table_pane = pn.Column(pn.Spacer(height=100),plot_GCTR[2],
+                           pn.Spacer(height=80),
+                           pn.pane.Markdown("""
+                                **Color Guide**\n
+                                *Green = Accretion, Red = Erosion*
+                                """))
     ts_pane = pn.pane.HoloViews(plot[0], width=1200)
     tst_pane = pn.pane.HoloViews(plot[1])
     tsd_pane = pn.pane.HoloViews(plot[2],)
