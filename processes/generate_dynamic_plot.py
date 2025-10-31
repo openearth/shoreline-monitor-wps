@@ -1,31 +1,3 @@
-#!/usr/bin/env python3
-
-# -*- coding: utf-8 -*-
-# Copyright notice
-#   --------------------------------------------------------------------
-#   Copyright (C) 2025 Deltares
-#     Irham Adrie Hakiki
-#
-#   This library is free software: you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation, either version 3 of the License, or
-#   (at your option) any later version.
-#
-#   This library is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this library.  If not, see <http://www.gnu.org/licenses/>.
-#   --------------------------------------------------------------------
-#
-# This tool is part of <a href="http://www.OpenEarth.eu">OpenEarthTools</a>.
-# OpenEarthTools is an online collaboration to share and manage data and
-# programming tools in an open source, version controlled environment.
-# Sign up to recieve regular updates of this function, and to contribute
-# your own tools.
-
 import matplotlib as mpl
 from shapely.geometry import Point, LineString
 from sklearn.linear_model import LinearRegression
@@ -169,14 +141,14 @@ def PlotTimeStackPosition(pivot):
     clim = (-max_abs_range, max_abs_range)
 
     # Retransform table to long dataframe
-    df_long = pivot.reset_index().melt(id_vars='index',var_name='Year', value_name='Shoreline Position')
+    df_long = pivot.reset_index().melt(id_vars='index',var_name='Year', value_name='Shoreline Position (m)')
     df_long.rename(columns={'index':'Distance (m)'},inplace=True)
 
     cmap = mpl.colormaps['RdYlGn'].reversed()
     fig = df_long.hvplot.heatmap(
         x='Distance (m)',
         y='Year',
-        C='Shoreline Position',
+        C='Shoreline Position (m)',
         cmap=cmap,
         colorbar=True,
         height=400,
@@ -215,15 +187,16 @@ def PlotTimeStackDifference(pivot):
     clim = (-max_abs_range, max_abs_range)
 
     # Retransform table to long dataframe
-    df_long = pivot_change.reset_index().melt(id_vars='index',var_name='Year', value_name='Change rate')
+    df_long = pivot_change.reset_index().melt(id_vars='index',var_name='Year', value_name='Change rate (m/year)')
     df_long.rename(columns={'index':'Distance (m)'},inplace=True)
 
 
-    cmap = mpl.colormaps['RdYlGn'].reversed()
+    # cmap = mpl.colormaps['RdYlGn'].reversed()
+    cmap = mpl.colormaps['RdYlGn']
     fig = df_long.hvplot.heatmap(
         x='Distance (m)',
         y='Year',
-        C='Change rate',
+        C='Change rate (m/year)',
         cmap=cmap,
         colorbar=True,
         height=400,
@@ -469,20 +442,28 @@ def PlotCoastlineRate(df,selected_transect=None):
     line=[]
     for awal, akhir in zip(origin,end_point):
         line.append(LineString([awal,akhir]))
-    line_gdf = df['sds_change_rate'].copy()
+    line_gdf = df[['transect_id','sds_change_rate','bearing']].copy()
+    # line_gdf = df.copy()
     line_gdf = gpd.GeoDataFrame(line_gdf).set_geometry(line).set_crs(origin.crs).to_crs(df.crs)
     line_gdf = line_gdf.to_crs(4326)
 
+    # find the first transect as reference point for placing legend
+    sorted = line_gdf[['transect_id','geometry','sds_change_rate']].sort_values(by=['transect_id'],ascending=False)
+    first_transect_name = sorted.values[0]
+    index_ref = df['transect_id'].isin(first_transect_name)
+    ref_point = df[index_ref].to_crs(epsg=3857).geometry.interpolate(0)
+    sorted['dist'] = np.arange(0,len(sorted)*100,100)
 
     # plot limit
     maxc = df['sds_change_rate'].max()
     minc = df['sds_change_rate'].min()
     clim = max(maxc,abs(minc))
-    cmap = cc.m_diverging_gwr_55_95_c38_r.copy()
+    cmap = mpl.colormaps['RdYlGn']
+    # cmap = cc.m_diverging_gwr_55_95_c38_r.copy()
     cmap.set_bad(color="black")
 
     # draw ambient change map
-    plot = line_gdf[['geometry','sds_change_rate']].hvplot(
+    plot = sorted[['geometry','sds_change_rate','dist']].hvplot(
         geo=True,
         tiles="ESRI",
         color='sds_change_rate',
@@ -493,21 +474,29 @@ def PlotCoastlineRate(df,selected_transect=None):
         clim=(-clim, clim),
         line_width = 12,
         title='Shoreline Change Map',
-        clabel='Shoreline Change Rate (m/year)'
-    )
+        clabel='Shoreline Change Rate (m/year)',
+        hover_cols=['dist'],
+        tools=['hover'],
+        hover_tooltips=[ 
+            ('Distance (m)', '@dist'),
+            ('Change rate (m/year)', '@sds_change_rate'),
+        ],
+    ).opts()
 
-    # find the first transect as reference point for placing legend
-    sorted = df[['transect_id']].sort_values(by=['transect_id'],ascending=False)
-    first_transect_name = sorted.values[0]
-    index_ref = df['transect_id'].isin(first_transect_name)
-    ref_point = df[index_ref].to_crs(epsg=3857).geometry.interpolate(0)
+    # # find the first transect as reference point for placing legend
+    # sorted = df[['transect_id']].sort_values(by=['transect_id'],ascending=False)
+    # first_transect_name = sorted.values[0]
+    # index_ref = df['transect_id'].isin(first_transect_name)
+    # ref_point = df[index_ref].to_crs(epsg=3857).geometry.interpolate(0)
 
     # draw arrow pointing view orientation
     x_ori = ref_point.x.to_numpy()
     y_ori = ref_point.y.to_numpy()
     shaft_length = reference_length/8
     arrow_length = shaft_length/5
-    arrow_x_axis = plot_arrow(x_ori,y_ori,df['bearing'].median()+90,shaft_length,arrow_length,color='yellow')
+    # arrow_x_axis = plot_arrow(x_ori,y_ori,df['bearing'].median()+90,shaft_length,arrow_length,color='yellow')
+    arrow_x_axis = plot_arrow(x_ori,y_ori,df[index_ref]['bearing'].values+90,shaft_length,arrow_length,color='yellow')
+
 
     # draw arrow orientation anchor
     circle = ref_point.buffer(arrow_length/2)   # radius in CRS units
@@ -662,8 +651,8 @@ def PlotBarCoastalChange(df,selected_transect=None,plot_outlier=False):
     ).opts(
         bar_width = 10000,
         hover_tooltips=[ 
-            ('Distance', '@dist'),
-            ('Change rate', '@sds_change_rate'),
+            ('Distance (m)', '@dist'),
+            ('Change rate (m/year)', '@sds_change_rate'),
         ],
         xlim = (0,sorted_df['dist'].max()),
     )
