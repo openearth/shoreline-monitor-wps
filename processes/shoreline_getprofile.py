@@ -135,6 +135,7 @@ def scatterplot(df, dfm):
             type="scatter",
             name="Outlier(s)",
             marker=dict(color="red", symbol="x"),
+            visible="legendonly",
         )
     )
 
@@ -185,9 +186,51 @@ def scatterplot(df, dfm):
 
     # Update layout
     fig.update_layout(
-        title="Shoreline Position Over Time",
-        xaxis_title="Date",
-        yaxis_title="Shoreline Position",
+        title=dict(
+            text="Transect timeseries",
+            # automargin=True,
+            y=0.98,
+            font=dict(family="Segoe UI", size=24, weight="bold", color="#000000"),
+            # yref="paper",
+        ),
+        plot_bgcolor="#ffffff",
+        xaxis_title="Date [yr]",
+        yaxis_title="Shoreline position [m]",
+        margin=dict(l=20, r=20, t=30, b=20),
+    )
+    fig.layout.xaxis.gridcolor = "#000000"
+    fig.layout.yaxis.gridcolor = "#000000"
+    fig.update_yaxes(
+        zeroline=True,
+        zerolinecolor="#ddd",
+        zerolinewidth=0.5,
+        showline=True,
+        mirror=True,
+        linecolor="#000000",
+        showgrid=True,
+        gridwidth=0.5,
+        gridcolor="#ddd",
+    )
+    fig.update_xaxes(
+        zeroline=True,
+        zerolinecolor="#ddd",
+        zerolinewidth=0.5,
+        showline=True,
+        mirror=True,
+        linecolor="#000000",
+        showgrid=True,
+        gridwidth=0.5,
+        gridcolor="#ddd",
+    )
+
+    fig.update_layout(
+        legend=dict(
+            orientation="h",  # horizontal legend
+            yanchor="top",  # anchor legend to the top
+            y=-0.13,  # position below the plot (negative = below)
+            xanchor="center",  # center horizontally
+            x=0.5,  # center alignment
+        )
     )
 
     # define unique id based on current time
@@ -210,60 +253,283 @@ def scatterplot(df, dfm):
     return url
 
 
+# def assignmetadata(html, dfm):
+#     """This function adds metadata to the scatterplot created in the previous routine.
+#     This metadata gives overall description of the transect.
+
+#     Args:
+
+
+#          html (string): html file with scatterplot
+#          dfm (dataframe): dataframe with basic metadata derived from gctr table
+
+#     Returns:
+#          html (string): overwrites the created html file by appending a specific portion of html code and contents
+#     """
+#     logger.info("Adding metadata to plot")
+
+#     # Create a HTML string with information
+#     html_info = """
+#     <div>
+#         <h2>Plot Information</h2>
+#         <table>
+#             <tr>
+#                 <th>Transect id</th>
+#                 <th>Country</th>
+#                 <th>Continent</th>
+#                 <th>Sandy</th>
+#                 <th>Ambient change rate [m/yr]</th>
+#             </tr>
+#     """
+
+#     for index, row in dfm.iterrows():
+#         html_info += f"""
+#             <tr>
+#                 <td>{row["transect_id"]}</td>
+#                 <td>{row["country"]}</td>
+#                 <td>{row["continent"]}</td>
+#                 <td>{str(row["sandy"])}</td>
+#                 <td>{row["sds_change_rate"]}</td>
+#             </tr>
+#         """
+
+#     html_info += """
+#         </table>
+#         </div>
+#         """
+
+#     # Read the plot HTML file
+#     with open(html, "r", encoding="utf-8", errors="replace") as f:
+#         plot_html = f.read()
+
+#     # Add the information section to the plot HTML
+#     with open(html, "w", encoding="utf-8") as f:
+#         f.write(plot_html + html_info)
+
+#     logger.info("Metadata successfully added")
+#     return html
+
+
 def assignmetadata(html, dfm):
-    """This function adds metadata to the scatterplot created in the previous routine.
-    This metadata gives overall description of the transect.
+    """Add a metadata table to the right-hand side of a Plotly HTML plot."""
 
-    Args:
+    import logging
 
-
-         html (string): html file with scatterplot
-         dfm (dataframe): dataframe with basic metadata derived from gctr table
-
-    Returns:
-         html (string): overwrites the created html file by appending a specific portion of html code and contents
-    """
+    logger = logging.getLogger(__name__)
     logger.info("Adding metadata to plot")
 
-    # Create a HTML string with information
+    # --- Build metadata table HTML (rows instead of columns) ---
     html_info = """
-    <div>
-        <h2>Plot Information</h2>
-        <table>
-            <tr>
-                <th>Transect id</th>
-                <th>Country</th>
-                <th>Continent</th>
-                <th>Sandy</th>
-                <th>Ambient Change Rate</th>
-            </tr>
+    <div class="info-container">
+        <div class="header-with-icon">
+            <h2>Transect metadata</h2>
+            <a href="https://shorelinemonitor.earth/" target="_blank" class="info-button" title="More information about metadata">
+                &#8505;
+            </a>
+        </div>
     """
 
-    for index, row in dfm.iterrows():
-        html_info += f"""
-            <tr>
-                <td>{row["transect_id"]}</td>
-                <td>{row["country"]}</td>
-                <td>{row["continent"]}</td>
-                <td>{str(row["sandy"])}</td>
-                <td>{row["sds_change_rate"]}</td>
-            </tr>
+    for _, row in dfm.iterrows():
+        html_info += """
+        <table class="meta-table">
         """
+        for label, value in [
+            ("Transect ID", row["transect_id"]),
+            ("Country", row["country"]),
+            ("Continent", row["continent"]),
+            # ("Coastal type", str(row["class_coastal_type"].replace("_", " "))),
+            ("Shore type", str(row["class_shore_type"].replace("_", " "))),
+            (
+                "Ambient change rate [m/yr]",
+                "%s +/- %s"
+                % (
+                    round(row["sds_change_rate"], 2),
+                    round(row["sds_change_rate_std_err"], 2),
+                ),
+            ),
+            ("Linear fit R²", round(row["sds_r_squared"], 2)),
+        ]:
+            html_info += f"""
+                <tr>
+                    <th>{label}</th>
+                    <td>{value}</td>
+                </tr>
+            """
+        html_info += "</table>"
 
-    html_info += """
-        </table>
-        </div>
-        """
+        # ⚠️ Add conditional warning if R² is small
+        if (
+            "sds_r_squared" in row
+            and pd.notna(row["sds_r_squared"])
+            and row["sds_r_squared"] < 0.5
+        ):
+            html_info += """
+            <div class="warning-text">
+                ⚠️ low conf. Linear Regression — advanced mode advised ⚠️
+            </div>
+            """
 
-    # Read the plot HTML file
+        html_info += "<br>"
+
+    html_info += "</div>"
+
+    # --- Read the Plotly HTML ---
     with open(html, "r", encoding="utf-8", errors="replace") as f:
         plot_html = f.read()
 
-    # Add the information section to the plot HTML
-    with open(html, "w", encoding="utf-8") as f:
-        f.write(plot_html + html_info)
+    # --- Strip HTML wrapper tags ---
+    for tag in ["<html>", "</html>", "<head>", "</head>", "<body>", "</body>"]:
+        plot_html = plot_html.replace(tag, "")
 
-    logger.info("Metadata successfully added")
+    # --- Construct new layout with auto-resize fix ---
+    full_html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Plot with metadata</title>
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+            }}
+            .container {{
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 0px;
+                padding: 20px;
+                width: calc(100% - 40px);
+                height: calc(100vh - 40px);
+                box-sizing: border-box;
+            }}
+            .plot-container {{
+                flex: 3;
+                min-width: 75%;
+                overflow: hidden;
+                align-self: flex-start;
+                height: auto;
+            }}
+            .info-container {{
+                flex: 1;
+                max-width: 25%;
+                background-color: #f8f9fa;
+                border: 1px solid c;
+                border-radius: 10px;
+                padding: 15px 20px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+                overflow-x: auto;
+                align-self: flex-start;
+            }}
+            h2 {{
+                text-align: center;
+                color: #333;
+                margin-top: 0;
+            }}
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+                table-layout: auto; /* Let browser size columns naturally */
+            }}
+            th, td {{
+                text-align: left;
+                padding: 8px;
+                border-bottom: 1px solid #ddd;
+                vertical-align: top;
+            }}
+            th {{
+                width: 1%;
+                background-color: #f1f1f1;
+                font-weight: 600;
+                color: #333;
+                white-space: nowrap; /* Prevent label wrapping */
+            }}
+            td {{
+                white-space: normal; /* Values can wrap if long */
+            }}
+            tr:hover {{
+                background-color: #f1f1f1;
+            }}
+            @media (max-width: 900px) {{
+                .container {{
+                    flex-direction: column;
+                }}
+                .info-container {{
+                    max-width: 100%;
+                }}
+            }}
+            .header-with-icon {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                margin-bottom: 2px;
+            }}
+            .header-with-icon h2 {{
+                margin: 0;               /* remove default h2 margins */
+                padding: 0;
+                line-height: 1.5;        /* keep compact vertical spacing */
+            }}
+            .info-button {{
+                text-decoration: none;
+                font-size: 12px;
+                color: #007bff;
+                background-color: #e9f2ff;
+                border-radius: 50%;
+                width: 18px;
+                height: 18px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                flex-shrink: 0;          /* keep the icon from shrinking */
+            }}
+            .info-button:hover {{
+                background-color: #007bff;
+                color: white;
+            }}
+            .warning-text {{
+                color: #d9534f;              /* red tone */
+                font-weight: 600;
+                text-align: center;
+                margin-top: 8px;
+                font-size: 14px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="plot-container" id="plot-container">
+                {plot_html}
+            </div>
+            {html_info}
+        </div>
+
+        <script>
+            // Wait for page to load, then trigger Plotly resize
+            window.addEventListener("load", function() {{
+                if (window.Plotly) {{
+                    const plots = document.querySelectorAll('.js-plotly-plot');
+                    plots.forEach(plot => {{
+                        Plotly.Plots.resize(plot);
+                    }});
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+
+    # --- Save final HTML ---
+    with open(html, "w", encoding="utf-8") as f:
+        f.write(full_html)
+
+    logger.info(
+        "✅ Metadata successfully added on the right-hand side (auto-resizing fixed)."
+    )
     return html
 
 
@@ -293,6 +559,10 @@ def handler(profile):
                 sandy,
                 sds_change_rate,
                 sds_change_intercept,
+                sds_change_rate_std_err,
+                sds_r_squared,
+                class_shore_type,
+                class_coastal_type,
                 index
                 FROM public.gctr g
                 join country c on c.idccn = g.idccn
@@ -307,7 +577,7 @@ def handler(profile):
                  from shorelinemonitor_series 
                  where gctr_id = '{profile}'
                  order by datetime"""
-    
+
     dfp = pd.read_sql_query(strsql, _engine)
     logger.info(f"Profile data query returned {len(dfp)} rows")
 
