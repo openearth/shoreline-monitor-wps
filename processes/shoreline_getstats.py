@@ -41,8 +41,10 @@ import plotly.graph_objs as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
+
 # from .generate_plot import *
-from .generate_dynamic_plot import *
+# from .generate_dynamic_plot import *
+from generate_dynamic_plot import *
 
 logger = logging.getLogger("PYWPS")
 
@@ -100,6 +102,7 @@ def _initialize_config():
 
     _config_initialized = True
 
+
 def handler(profile):
     """This function is the main handler that receives data from the WPS service.
     The function constructs an HTML page with information from the profile (metadata called)
@@ -114,12 +117,12 @@ def handler(profile):
                        timeseries data.
     """
     global _abspath, _location
-    
+
     logger.info(f"=== Starting handler for profile: {profile} ===")
 
     # Initialize configuration (this will now run when PyWPS is ready)
     _initialize_config()
- 
+
     logger.info("Executing metadata query")
     strsql = f"""
         WITH target_profile AS (
@@ -141,16 +144,15 @@ def handler(profile):
 
     df = gpd.read_postgis(strsql, _engine)
 
-    if os.name =='nt':
+    if os.name == "nt":
         print(f"Metadata query returned {len(df)} rows")
     else:
         logger.info(f"Metadata query returned {len(df)} rows")
-    
 
     logger.info("Executing profile data query")
-    # create a list of transect_ids in order to select all corresponding 
+    # create a list of transect_ids in order to select all corresponding
     # shoreline-monitor-series data in following query
-    lsttransects = ','.join(f"'{tid}'" for tid in df['transect_id'])
+    lsttransects = ",".join(f"'{tid}'" for tid in df["transect_id"])
     strsql = f"""select transect_id, 
                     st_transform(geometry,3857) as geom, 
                     datetime, 
@@ -160,10 +162,10 @@ def handler(profile):
                  from shorelinemonitor_series 
                  where transect_id in ({lsttransects})
                  order by datetime"""
-    
+
     dfp = gpd.read_postgis(strsql, _engine)
 
-    if os.name == 'nt':
+    if os.name == "nt":
         print(f"Profile data query returned {len(dfp)} rows")
     else:
         logger.info(f"Profile data query returned {len(dfp)} rows")
@@ -175,7 +177,6 @@ def handler(profile):
 
     logger.info("Generating 6 plots")
 
-
     def find_transect_name(profile):
         """Function for finding transect name from profile id
 
@@ -184,7 +185,7 @@ def handler(profile):
 
         Returns:
             string: name of corresponding transect
-        """ 
+        """
         strsql = f"""SELECT 
                 transect_id,
                 sds_change_rate,
@@ -194,13 +195,12 @@ def handler(profile):
                 where index = '{profile}'"""
 
         df = pd.read_sql_query(strsql, _engine)
-        return df['transect_id'].values[0]
+        return df["transect_id"].values[0]
 
-    
     transect_name = find_transect_name(profile)
-    filter, plot = PostProcShoreline(transect_name,dfp)
-    plot_GCTR = PostProcGCTR(df,filter,selected_transect=transect_name)
-    
+    filter, plot = PostProcShoreline(transect_name, dfp)
+    plot_GCTR = PostProcGCTR(df, filter, selected_transect=transect_name)
+
     # # Specify plotting size and layouting for static plot
     # map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
     # bar_pane = pn.pane.Matplotlib(plot_GCTR[1], tight=True, width=700)
@@ -209,22 +209,29 @@ def handler(profile):
     # tsd_pane = pn.pane.Matplotlib(plot[2], width=500, height=400, tight=True)
 
     # # Specify plotting size and layouting for interactive plot
-    map_pane = pn.pane.HoloViews(plot_GCTR[0],width=800,height=550)
+    map_pane = pn.pane.HoloViews(plot_GCTR[0], width=800, height=550)
     bar_pane = pn.pane.HoloViews(plot_GCTR[1], width=700)
-    table_pane = pn.Column(pn.Spacer(height=100),plot_GCTR[2],
-                           pn.Spacer(height=80),
-                           pn.pane.Markdown("""
+    table_pane = pn.Column(
+        pn.Spacer(height=100),
+        plot_GCTR[2],
+        pn.Spacer(height=80),
+        pn.pane.Markdown(
+            """
                                 **Color Guide**\n
                                 *Green = Accretion, Red = Erosion*
-                                """))
+                                """
+        ),
+    )
     ts_pane = pn.pane.HoloViews(plot[0], width=1200)
     tst_pane = pn.pane.HoloViews(plot[1])
-    tsd_pane = pn.pane.HoloViews(plot[2],)
+    tsd_pane = pn.pane.HoloViews(
+        plot[2],
+    )
 
     layout = pn.Column(
-        pn.Row(map_pane, table_pane,height=550), 
-        pn.Row(bar_pane, pn.Column(tst_pane, tsd_pane)), 
-        pn.Row(ts_pane)  
+        pn.Row(map_pane, table_pane, height=550),
+        pn.Row(bar_pane, pn.Column(tst_pane, tsd_pane)),
+        pn.Row(ts_pane),
     )
 
     # define unique id based on current time
@@ -242,6 +249,7 @@ def handler(profile):
     url = f"{_location}/data/{pltname}"
     logger.info(f"=== Handler completed successfully, returning URL: {url} ===")
     return url
+
 
 def test():
     """Test function"""
