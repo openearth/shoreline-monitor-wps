@@ -423,20 +423,20 @@ def assignmetadata(html, dfm):
                 align-items: flex-start;
                 gap: 0px;
                 padding: 20px;
-                width: calc(62% - 40px);
-                height: calc(62vh - 40px);
+                width: calc(65% - 40px);
+                height: calc(65vh - 40px);
                 box-sizing: border-box;
             }}
             .plot-container {{
                 flex: 3;
-                min-width: 65%;
+                min-width: 61%;
                 overflow: hidden;
                 align-self: flex-start;
                 height: auto;
             }}
             .info-container {{
                 flex: 1.8;
-                max-width: 35%;
+                max-width: 39%;
                 background-color: #f8f9fa;
                 border: 1px solid c;
                 border-radius: 10px;
