@@ -330,6 +330,27 @@ def assignmetadata(html, dfm):
     """
 
     for _, row in dfm.iterrows():
+        # classify change rate
+        rate = row["sds_change_rate"]
+        if rate < -5:
+            change_class = "Extreme erosion (< -5 m/yr)"
+        elif rate < -3.0 and rate >= -5.0:
+            change_class = "Severe erosion (-3.0 to -5.0 m/yr)"
+        elif rate < -1.0 and rate >= -3.0:
+            change_class = "Intense erosion (-1.0 to -3.0 m/yr)"
+        elif rate < -0.4 and rate >= -1.0:
+            change_class = "Erosion (-0.4 to -1.0 m/yr)"
+        elif rate >= -0.4 and rate <= 0.4:
+            change_class = "Stable (-0.4 to 0.4 m/yr)"
+        elif rate > 0.4 and rate <= 1.0:
+            change_class = "Accretion (0.4 to 1.0 m/yr)"
+        elif rate > 1.0 and rate <= 3.0:
+            change_class = "Intense accretion (1.0 to 3.0 m/yr)"
+        elif rate > 3.0 and rate <= 5.0:
+            change_class = "Severe accretion (3.0 to 5.0 m/yr)"
+        elif rate > 5:
+            change_class = "Extreme accretion (> 5 m/yr)"
+
         html_info += """
         <table class="meta-table">
         """
@@ -343,10 +364,11 @@ def assignmetadata(html, dfm):
                 "Ambient change rate [m/yr]",
                 "%s +/- %s"
                 % (
-                    round(row["sds_change_rate"], 2),
+                    round(rate, 2),
                     round(row["sds_change_rate_std_err"], 2),
                 ),
             ),
+            ("Change rate classification", change_class),
             ("Linear fit R²", round(row["sds_r_squared"], 2)),
         ]:
             html_info += f"""
@@ -365,7 +387,7 @@ def assignmetadata(html, dfm):
         ):
             html_info += """
             <div class="warning-text">
-                ⚠️ low conf. Linear Regression — advanced mode advised ⚠️
+                ⚠️ low conf. Linear Regression — use with caution ⚠️
             </div>
             """
 
@@ -401,20 +423,20 @@ def assignmetadata(html, dfm):
                 align-items: flex-start;
                 gap: 0px;
                 padding: 20px;
-                width: calc(100% - 40px);
-                height: calc(100vh - 40px);
+                width: calc(62% - 40px);
+                height: calc(62vh - 40px);
                 box-sizing: border-box;
             }}
             .plot-container {{
                 flex: 3;
-                min-width: 75%;
+                min-width: 65%;
                 overflow: hidden;
                 align-self: flex-start;
                 height: auto;
             }}
             .info-container {{
-                flex: 1;
-                max-width: 25%;
+                flex: 1.8;
+                max-width: 35%;
                 background-color: #f8f9fa;
                 border: 1px solid c;
                 border-radius: 10px;
