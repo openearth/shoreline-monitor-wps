@@ -43,8 +43,8 @@ import numpy as np
 import logging
 
 # from .generate_plot import *
-# from .generate_dynamic_plot import *
-from generate_dynamic_plot import *
+from .generate_dynamic_plot import *
+#from generate_dynamic_plot import *
 
 logger = logging.getLogger("PYWPS")
 
