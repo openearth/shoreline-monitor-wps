@@ -393,6 +393,103 @@ def assignmetadata(html, dfm):
 
         html_info += "<br>"
 
+        # --- Feedback Section (Google Form) ---
+    html_info += """
+    <div class="feedback-container">
+
+        <h3>User Feedback</h3>
+
+        <label>
+            <input type="radio" name="reliability" value="Reliable / representative">
+            Reliable / representative
+        </label><br>
+
+        <label>
+            <input type="radio" name="reliability" value="Questionable (interpret with caution)">
+            Questionable (interpret with caution)
+        </label><br>
+
+        <label>
+            <input type="radio" name="reliability" value="Not reliable">
+            Not reliable
+        </label>
+
+        <div id="questionable-options" style="display:none; margin-top:10px;">
+
+            <strong>Please specify:</strong><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Residual outliers">
+                Residual outliers
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Time series discontinuities / step changes">
+                Time series discontinuities / step changes
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Dominance of short term variability (seasonal / event-scale)">
+                Dominance of short term variability (seasonal / event-scale)
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)">
+                Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Human intervention likely (nourishment / structures / reclamation)">
+                Human intervention likely (nourishment / structures / reclamation)
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)">
+                Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details"
+                value="Datum / reference inconsistencies suspected">
+                Datum / reference inconsistencies suspected
+            </label><br>
+
+            <label>
+                <input type="checkbox" name="details" value="Other:">
+                Other:
+            </label>
+
+            <div id="other-box" style="display:none; margin-top:5px;">
+                <input type="text" id="other-text" placeholder="Please specify">
+            </div>
+
+        </div>
+
+        <!-- Add hidden metadata fields here -->
+        <input type="hidden" id="transect-id">
+        <input type="hidden" id="center-lon">
+        <input type="hidden" id="center-lat">
+        <input type="hidden" id="country">
+        <input type="hidden" id="continent">
+        <input type="hidden" id="shore-type">
+        <input type="hidden" id="change-rate">
+        <input type="hidden" id="std">
+        <input type="hidden" id="classification">
+        <input type="hidden" id="r2">
+        <input type="hidden" id="ip-address">
+
+        <br>
+        <button class="feedback-button" onclick="submitFeedback()">Submit</button>
+
+    </div>
+    """
+
     html_info += "</div>"
 
     # --- Read the Plotly HTML ---
@@ -423,27 +520,28 @@ def assignmetadata(html, dfm):
                 align-items: flex-start;
                 gap: 0px;
                 padding: 20px;
-                width: calc(65% - 40px);
-                height: calc(65vh - 40px);
+                width: calc(70% - 40px);
+                height: calc(70vh - 40px);
                 box-sizing: border-box;
             }}
             .plot-container {{
-                flex: 3;
-                min-width: 61%;
+                flex: 3.5;
+                min-width: 65%;
                 overflow: hidden;
                 align-self: flex-start;
                 height: auto;
             }}
             .info-container {{
-                flex: 1.8;
-                max-width: 39%;
+                flex: 2.0;
+                max-width: 35%;
                 background-color: #f8f9fa;
                 border: 1px solid c;
                 border-radius: 10px;
                 padding: 15px 20px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                overflow-x: auto;
-                align-self: flex-start;
+                overflow-x: hidden;
+                overflow-y: auto;
+                max-height: 100%;
             }}
             h2 {{
                 text-align: center;
@@ -520,6 +618,42 @@ def assignmetadata(html, dfm):
                 margin-top: 8px;
                 font-size: 14px;
             }}
+            .feedback-container {{
+                margin-top: 15px;
+                text-align: center;
+            }}
+            .feedback-button {{
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 8px 14px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+            }}
+            .feedback-button:hover {{
+                background-color: #0056b3;
+            }}
+            .feedback-box textarea {{
+                width: 100%;
+                height: 70px;
+                resize: vertical;
+                padding: 6px;
+                font-size: 13px;
+            }}
+            .feedback-box button {{
+                margin-top: 5px;
+                padding: 6px 10px;
+                font-size: 13px;
+            }}
+            .feedback-box {{
+                max-height: 0;
+                overflow: hidden;
+                transition: max-height 0.3s ease;
+            }}
+            .feedback-box.active {{
+                max-height: 200px;
+            }}  
         </style>
     </head>
     <body>
@@ -540,6 +674,116 @@ def assignmetadata(html, dfm):
                     }});
                 }}
             }});
+
+            // --- Show conditional options ---
+            document.addEventListener("change", function(e) {{
+
+                if (e.target.name === "reliability") {{
+                    const show = e.target.value === "Questionable (interpret with caution)";
+                    document.getElementById("questionable-options").style.display = show ? "block" : "none";
+                }}
+
+                if (e.target.name === "details" && e.target.value === "Other:") {{
+                    document.getElementById("other-box").style.display =
+                        e.target.checked ? "block" : "none";
+                }}
+            }});
+
+            // Fill hidden metadata field for potential use in form submission
+            document.getElementById("transect-id").value = "{dfm['transect_id'].values[0]}";
+            document.getElementById("center-lon").value = "{dfm['center_lon'].values[0]}";
+            document.getElementById("center-lat").value = "{dfm['center_lat'].values[0]}";
+            document.getElementById("country").value = "{dfm['country'].values[0]}";
+            document.getElementById("continent").value = "{dfm['continent'].values[0]}";
+            document.getElementById("shore-type").value = "{dfm['class_shore_type'].values[0]}";
+            document.getElementById("change-rate").value = "{dfm['sds_change_rate'].values[0]}";
+            document.getElementById("std").value = "{dfm['sds_change_rate_std_err'].values[0]}";
+            document.getElementById("classification").value = "{change_class}";
+            document.getElementById("r2").value = "{dfm['sds_r_squared'].values[0]}";
+
+            // Optional: get IP
+            fetch("https://api.ipify.org?format=json")
+                .then(response => response.json())
+                .then(data => {{
+                    document.getElementById("ip-address").value = data.ip;
+                }});
+
+            // --- Submit to Google Form ---
+            function submitFeedback() {{
+
+                const selected = document.querySelector('input[name="reliability"]:checked');
+
+                if (!selected) {{
+                    alert("Please select an assessment option.");
+                    return;
+                }}
+
+                const formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdYunKIvdp2EjryKVTnXTFsTINsI_DUKQX7FmVpC6e7sHbx2Q/formResponse";
+                const formData = new FormData();
+
+                // Question 1
+                formData.append("entry.1968241590", selected.value);
+
+                // If Questionable → require at least one checkbox
+                if (selected.value.includes("Questionable")) {{
+
+                    const checkboxes = document.querySelectorAll('input[name="details"]:checked');
+
+                    if (checkboxes.length === 0) {{
+                        alert("Please select at least one reason.");
+                        return;
+                    }}
+
+                    let isValid = true;   // <-- control flag
+
+                    checkboxes.forEach(cb => {{
+
+                        if (cb.value === "Other:") {{
+
+                            const otherText = document.getElementById("other-text").value.trim();
+
+                            if (otherText === "") {{
+                                alert("Please specify the 'Other' reason.");
+                                isValid = false;
+                                return;
+                            }}
+
+                            formData.append("entry.467815806", "__other_option__");
+                            formData.append("entry.467815806.other_option_response", otherText);
+
+                        }} else {{
+                            formData.append("entry.467815806", cb.value);
+                        }}
+                    }});
+
+                    // 🚨 Stop submission completely if invalid
+                    if (!isValid) {{
+                        return;
+                    }}
+                }}
+
+                // append additional hidden metadata fields if needed
+                formData.append("entry.2142836349", document.getElementById("transect-id").value); // Hidden transect ID
+                formData.append("entry.51855834", document.getElementById("center-lon").value); // Hidden center longitude
+                formData.append("entry.344849078", document.getElementById("center-lat").value); // Hidden center latitude
+                formData.append("entry.659486804", document.getElementById("country").value); // Hidden country
+                formData.append("entry.1029413259", document.getElementById("continent").value); // Hidden continent
+                formData.append("entry.346152434", document.getElementById("shore-type").value); // Hidden shore type
+                formData.append("entry.934577245", document.getElementById("change-rate").value); // Hidden change rate
+                formData.append("entry.2092884113", document.getElementById("std").value); // Hidden standard deviation
+                formData.append("entry.357345898", document.getElementById("classification").value); // Hidden classification
+                formData.append("entry.1030618903", document.getElementById("r2").value); // Hidden R-squared
+                formData.append("entry.290909900", document.getElementById("ip-address").value); // Hidden IP address
+
+                fetch(formUrl, {{
+                    method: "POST",
+                    mode: "no-cors",
+                    body: formData
+                }});
+
+                alert("Thank you for your submission!");
+            }}
+
         </script>
     </body>
     </html>
@@ -579,6 +823,8 @@ def handler(profile):
                 common_country_name as country,
                 continent,
                 sandy,
+                ST_X(ST_Centroid(geometry)) as center_lon,
+                ST_Y(ST_Centroid(geometry)) as center_lat,
                 sds_change_rate,
                 sds_change_intercept,
                 sds_change_rate_std_err,
