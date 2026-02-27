@@ -189,14 +189,14 @@ def scatterplot(df, dfm):
         title=dict(
             text="Transect timeseries",
             # automargin=True,
-            y=0.98,
+            y=1,
             font=dict(family="Segoe UI", size=24, weight="bold", color="#000000"),
             # yref="paper",
         ),
         plot_bgcolor="#ffffff",
         xaxis_title="Date [yr]",
         yaxis_title="Shoreline position [m]",
-        margin=dict(l=20, r=20, t=30, b=20),
+        margin=dict(l=0, r=10, t=22, b=0),
     )
     fig.layout.xaxis.gridcolor = "#000000"
     fig.layout.yaxis.gridcolor = "#000000"
@@ -391,87 +391,46 @@ def assignmetadata(html, dfm):
             </div>
             """
 
-        html_info += "<br>"
+        #html_info += "<br>"
 
-        # --- Feedback Section (Google Form) ---
     html_info += """
-    <div class="feedback-container">
+    <button id="feedback-toggle" class="feedback-button">Submit Feedback</button>
+    """
 
-        <h3>User Feedback</h3>
+    # --- Collapsible Feedback Form ---
+    html_info += """
+    <div id="feedback-form" class="feedback-collapsible" style="display:none; margin-top:10px;">
+        <!-- Question 1: Reliability -->
+        <table class="meta-table feedback-table">
+            <tr><th colspan="2">Assessment</th></tr>
+            <tr><td colspan="2">In your judgement, how reliable is this transect time series as an indicator of shoreline change at this location?<br>
+                <label><input type="radio" name="reliability" value="Reliable / representative"> Reliable / representative</label><br>
+                <label><input type="radio" name="reliability" value="Questionable (interpret with caution)"> Questionable (interpret with caution)</label><br>
+                <label><input type="radio" name="reliability" value="Not reliable"> Not reliable</label>
+            </td></tr>
+        </table>
 
-        <label>
-            <input type="radio" name="reliability" value="Reliable / representative">
-            Reliable / representative
-        </label><br>
-
-        <label>
-            <input type="radio" name="reliability" value="Questionable (interpret with caution)">
-            Questionable (interpret with caution)
-        </label><br>
-
-        <label>
-            <input type="radio" name="reliability" value="Not reliable">
-            Not reliable
-        </label>
-
-        <div id="questionable-options" style="display:none; margin-top:10px;">
-
-            <strong>Please specify:</strong><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Residual outliers">
-                Residual outliers
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Time series discontinuities / step changes">
-                Time series discontinuities / step changes
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Dominance of short term variability (seasonal / event-scale)">
-                Dominance of short term variability (seasonal / event-scale)
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)">
-                Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Human intervention likely (nourishment / structures / reclamation)">
-                Human intervention likely (nourishment / structures / reclamation)
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)">
-                Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details"
-                value="Datum / reference inconsistencies suspected">
-                Datum / reference inconsistencies suspected
-            </label><br>
-
-            <label>
-                <input type="checkbox" name="details" value="Other:">
-                Other:
-            </label>
-
-            <div id="other-box" style="display:none; margin-top:5px;">
-                <input type="text" id="other-text" placeholder="Please specify">
-            </div>
-
+        <!-- Question 2: Only shows if Questionable is selected -->
+        <div id="questionable-options" class="feedback-dropdown" style="display:none; margin-top:0px;">
+            <table class="meta-table feedback-table">
+                <tr><th colspan="2">Specify cause(s)</th></tr>
+                <tr><td colspan="2">Could you select a possible cause(s) out of the list below?<br>
+                    <label><input type="checkbox" name="details" value="Residual outliers"> Residual outliers</label><br>
+                    <label><input type="checkbox" name="details" value="Time series discontinuities / step changes"> Time series discontinuities / step changes</label><br>
+                    <label><input type="checkbox" name="details" value="Dominance of short term variability (seasonal / event-scale)"> Dominance of short term variability</label><br>
+                    <label><input type="checkbox" name="details" value="Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)"> Coast is morphologically complex</label><br>
+                    <label><input type="checkbox" name="details" value="Human intervention likely (nourishment / structures / reclamation)"> Human intervention likely</label><br>
+                    <label><input type="checkbox" name="details" value="Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)"> Imagery / processing artefacts likely</label><br>
+                    <label><input type="checkbox" name="details" value="Datum / reference inconsistencies suspected"> Datum / reference inconsistencies suspected</label><br>
+                    <label><input type="checkbox" name="details" value="Other:"> Other:</label>
+                    <div id="other-box" style="display:none; margin-top:5px;">
+                        <input type="text" id="other-text" placeholder="Please specify">
+                    </div>
+                </td></tr>
+            </table>
         </div>
 
-        <!-- Add hidden metadata fields here -->
+        <!-- Hidden fields for metadata and IP -->
         <input type="hidden" id="transect-id">
         <input type="hidden" id="center-lon">
         <input type="hidden" id="center-lat">
@@ -483,10 +442,14 @@ def assignmetadata(html, dfm):
         <input type="hidden" id="classification">
         <input type="hidden" id="r2">
         <input type="hidden" id="ip-address">
-
-        <br>
-        <button class="feedback-button" onclick="submitFeedback()">Submit</button>
-
+        <input type="hidden" id="ip-org">
+        <input type="hidden" id="ip-as">
+        <input type="hidden" id="ip-country">
+        <input type="hidden" id="ip-city">
+        <input type="hidden" id="ip-lon">
+        <input type="hidden" id="ip-lat">
+        
+        <button id="feedback-submit" class="feedback-button" onclick="submitFeedback()">Submit Feedback</button>
     </div>
     """
 
@@ -517,19 +480,18 @@ def assignmetadata(html, dfm):
             .container {{
                 display: flex;
                 flex-direction: row;
-                align-items: flex-start;
+                align-items: stretch
                 gap: 0px;
-                padding: 20px;
-                width: calc(70% - 40px);
-                height: calc(70vh - 40px);
+                padding: 5px;
+                width: 70%;
                 box-sizing: border-box;
             }}
             .plot-container {{
                 flex: 3.5;
                 min-width: 65%;
                 overflow: hidden;
-                align-self: flex-start;
-                height: auto;
+                padding: 0;
+                margin: 0;
             }}
             .info-container {{
                 flex: 2.0;
@@ -537,11 +499,12 @@ def assignmetadata(html, dfm):
                 background-color: #f8f9fa;
                 border: 1px solid c;
                 border-radius: 10px;
-                padding: 15px 20px;
+                padding: 10px 10px;
                 box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-                overflow-x: hidden;
+                display: flex;
+                flex-direction: column;
+                overflow-x: auto;
                 overflow-y: auto;
-                max-height: 100%;
             }}
             h2 {{
                 text-align: center;
@@ -619,11 +582,12 @@ def assignmetadata(html, dfm):
                 font-size: 14px;
             }}
             .feedback-container {{
-                margin-top: 15px;
+                margin-top: 5px;
                 text-align: center;
             }}
             .feedback-button {{
-                background-color: #007bff;
+                margin-top: 10px;
+                background-color: #0056b3;
                 color: white;
                 border: none;
                 padding: 8px 14px;
@@ -647,13 +611,21 @@ def assignmetadata(html, dfm):
                 font-size: 13px;
             }}
             .feedback-box {{
-                max-height: 0;
-                overflow: hidden;
+                overflow-y: auto;
                 transition: max-height 0.3s ease;
             }}
             .feedback-box.active {{
-                max-height: 200px;
+                max-height: 100%;
             }}  
+            #feedback-form .feedback-button {{
+                width: 100%;
+                display: block;
+                margin-top: 10px;
+            }}
+            #feedback-submit.submitted {{
+                background-color: #28a745;  /* green */
+                color: white;
+            }}
         </style>
     </head>
     <body>
@@ -675,17 +647,60 @@ def assignmetadata(html, dfm):
                 }}
             }});
 
-            // --- Show conditional options ---
-            document.addEventListener("change", function(e) {{
+            let lockedPlotHeight = null;
 
-                if (e.target.name === "reliability") {{
-                    const show = e.target.value === "Questionable (interpret with caution)";
-                    document.getElementById("questionable-options").style.display = show ? "block" : "none";
+            function syncInfoHeight() {{
+                const plot = document.querySelector('.plot-container');
+                const info = document.querySelector('.info-container');
+
+                if (plot && info) {{
+
+                    // Only compute once
+                    if (!lockedPlotHeight) {{
+                        lockedPlotHeight = plot.getBoundingClientRect().height - 20;
+                    }}
+
+                    info.style.height = lockedPlotHeight + "px";
+                }}
+            }}
+
+            // Run on load and on window resize
+            window.addEventListener("load", syncInfoHeight);
+            window.addEventListener("resize", function() {{
+                lockedPlotHeight = null;  // reset on real resize
+                syncInfoHeight();
+            }});
+
+            // Toggle feedback form
+            const toggleButton = document.getElementById("feedback-toggle");
+            const form = document.getElementById("feedback-form");
+
+            toggleButton.addEventListener("click", function () {{
+
+                const isOpen = form.style.display === "block";
+
+                if (isOpen) {{
+                    // CLOSE
+                    form.style.display = "none";
+                    toggleButton.textContent = "Submit Feedback";
+                }} else {{
+                    // OPEN
+                    form.style.display = "block";
+                    toggleButton.textContent = "Close Feedback";
                 }}
 
+                // keep container height locked to plot
+                setTimeout(syncInfoHeight, 50);
+            }});
+
+            // Show Question 2 only if Questionable selected
+            document.addEventListener("change", function(e) {{
+                if (e.target.name === "reliability") {{
+                    const showSecond = e.target.value.includes("Questionable");
+                    document.getElementById("questionable-options").style.display = showSecond ? "block" : "none";
+                }}
                 if (e.target.name === "details" && e.target.value === "Other:") {{
-                    document.getElementById("other-box").style.display =
-                        e.target.checked ? "block" : "none";
+                    document.getElementById("other-box").style.display = e.target.checked ? "block" : "none";
                 }}
             }});
 
@@ -701,20 +716,40 @@ def assignmetadata(html, dfm):
             document.getElementById("classification").value = "{change_class}";
             document.getElementById("r2").value = "{dfm['sds_r_squared'].values[0]}";
 
-            // Optional: get IP
-            fetch("https://api.ipify.org?format=json")
+            // Get IP and geolocation
+            fetch("http://ip-api.com/json/")
+                //.then(r => r.json())
+                //.then(d => console.log(d));
                 .then(response => response.json())
                 .then(data => {{
-                    document.getElementById("ip-address").value = data.ip;
+                    document.getElementById("ip-address").value = data.query || "";
+                    document.getElementById("ip-org").value = data.org || "";
+                    document.getElementById("ip-as").value = data.as || "";
+                    document.getElementById("ip-country").value = data.country || "";
+                    document.getElementById("ip-city").value = data.city || "";
+                    document.getElementById("ip-lat").value = data.lat || "";
+                    document.getElementById("ip-lon").value = data.lon || "";
+                }})
+                .catch(error => {{
+                    console.log("Geolocation lookup failed:", error);
                 }});
-
+            
             // --- Submit to Google Form ---
             function submitFeedback() {{
+            
+                const submitBtn = document.getElementById("feedback-submit");
+            
+                // 🚫 Block repeated clicks
+                if (submitBtn.disabled) return;
+
+                submitBtn.disabled = true;
 
                 const selected = document.querySelector('input[name="reliability"]:checked');
 
                 if (!selected) {{
                     alert("Please select an assessment option.");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Submit Feedback";
                     return;
                 }}
 
@@ -731,6 +766,8 @@ def assignmetadata(html, dfm):
 
                     if (checkboxes.length === 0) {{
                         alert("Please select at least one reason.");
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Submit Feedback";
                         return;
                     }}
 
@@ -758,6 +795,8 @@ def assignmetadata(html, dfm):
 
                     // 🚨 Stop submission completely if invalid
                     if (!isValid) {{
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Submit Feedback";
                         return;
                     }}
                 }}
@@ -774,6 +813,12 @@ def assignmetadata(html, dfm):
                 formData.append("entry.357345898", document.getElementById("classification").value); // Hidden classification
                 formData.append("entry.1030618903", document.getElementById("r2").value); // Hidden R-squared
                 formData.append("entry.290909900", document.getElementById("ip-address").value); // Hidden IP address
+                formData.append("entry.2001207827", document.getElementById("ip-org").value); // Hidden IP organization
+                formData.append("entry.582825405", document.getElementById("ip-as").value); // Hidden IP AS
+                formData.append("entry.113173912", document.getElementById("ip-country").value); // Hidden IP country
+                formData.append("entry.2064210735", document.getElementById("ip-city").value); // Hidden IP city
+                formData.append("entry.230829187", document.getElementById("ip-lon").value); // Hidden IP longitude
+                formData.append("entry.851005277", document.getElementById("ip-lat").value); // Hidden IP latitude
 
                 fetch(formUrl, {{
                     method: "POST",
@@ -782,6 +827,9 @@ def assignmetadata(html, dfm):
                 }});
 
                 alert("Thank you for your submission!");
+
+                submitBtn.textContent = "Submitted ✓";
+                submitBtn.classList.add("submitted");
             }}
 
         </script>
