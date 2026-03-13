@@ -403,7 +403,7 @@ def assignmetadata(html, dfm):
         <!-- Question 1: Reliability -->
         <table class="meta-table feedback-table">
             <tr><th colspan="2">Assessment</th></tr>
-            <tr><td colspan="2">In your judgement, how reliable is this transect time series as an indicator of shoreline change at this location?<br>
+            <tr><td colspan="2">In your judgement, how reliable are the data points (transect time series) as an indicator of shoreline change at this location?<br>
                 <label><input type="radio" name="reliability" value="Reliable / representative"> Reliable / representative</label><br>
                 <label><input type="radio" name="reliability" value="Questionable (interpret with caution)"> Questionable (interpret with caution)</label><br>
                 <label><input type="radio" name="reliability" value="Not reliable"> Not reliable</label>
@@ -414,14 +414,11 @@ def assignmetadata(html, dfm):
         <div id="questionable-options" class="feedback-dropdown" style="display:none; margin-top:0px;">
             <table class="meta-table feedback-table">
                 <tr><th colspan="2">Specify cause(s)</th></tr>
-                <tr><td colspan="2">Could you select a possible cause(s) out of the list below?<br>
-                    <label><input type="checkbox" name="details" value="Residual outliers"> Residual outliers</label><br>
-                    <label><input type="checkbox" name="details" value="Time series discontinuities / step changes"> Time series discontinuities / step changes</label><br>
-                    <label><input type="checkbox" name="details" value="Dominance of short term variability (seasonal / event-scale)"> Dominance of short term variability</label><br>
-                    <label><input type="checkbox" name="details" value="Coast is morphologically complex (e.g. tidal inlets, estuaries, deltas)"> Coast is morphologically complex</label><br>
-                    <label><input type="checkbox" name="details" value="Human intervention likely (nourishment / structures / reclamation)"> Human intervention likely</label><br>
-                    <label><input type="checkbox" name="details" value="Imagery / processing artefacts likely (e.g. clouds, foam, turbid water)"> Imagery / processing artefacts likely</label><br>
-                    <label><input type="checkbox" name="details" value="Datum / reference inconsistencies suspected"> Datum / reference inconsistencies suspected</label><br>
+                <tr><td colspan="2">Could you select a possible technical or contextual cause(s) out of the list below?<br>
+                    <label><input type="checkbox" name="details" value="Some data points are not regarded as outliers"> Some data points are not regarded as outliers</label><br>
+                    <label><input type="checkbox" name="details" value="Time series signal is not complete"> Time series signal is not complete</label><br>
+                    <label><input type="checkbox" name="details" value="Coast is morphologically complex"> Coast is morphologically complex</label><br>
+                    <label><input type="checkbox" name="details" value="Human intervention likely"> Human intervention likely</label><br>
                     <label><input type="checkbox" name="details" value="Other:"> Other:</label>
                     <div id="other-box" style="display:none; margin-top:5px;">
                         <input type="text" id="other-text" placeholder="Please specify">
