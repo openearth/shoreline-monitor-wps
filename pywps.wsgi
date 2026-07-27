@@ -36,13 +36,11 @@ import flask
 import pywps
 from pywps.app.Service import Service
 import logging
-
-# from flask_cors import CORS
-
-# Ultimate question
+#from flask_cors import CORS
 from processes.wps_ultimate_question import UltimateQuestion
 from processes.wps_shoreline_getprofile import WpsShorelineGetprofile
 from processes.wps_shoreline_getstats import WpsShorelineGetStats
+from processes.feedback import init_feedback
 
 
 # TODO add the proces in the processes list
@@ -61,7 +59,9 @@ for process in processes:
 
 service = Service(processes, ["pywps.cfg"])
 application = flask.Flask(__name__)
-# CORS(application)
+
+
+init_feedback(application)
 
 
 @application.route("/")
