@@ -78,7 +78,7 @@ def _initialize_config():
     # Set paths - use relative paths from project root
     if os.name == "nt":
         _abspath = os.path.join(project_root, "data")
-        _location = "localhost:5000"
+        _location = "http://localhost:5000"
 
     else:
         _abspath = os.path.join(project_root, "data")
