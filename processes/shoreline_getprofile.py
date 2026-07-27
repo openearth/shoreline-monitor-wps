@@ -425,10 +425,10 @@ def assignmetadata(html, dfm):
             .container {{
                 display: flex;
                 flex-direction: row;
-                align-items: stretch
+                align-items: stretch;
                 gap: 0px;
                 padding: 5px;
-                width: 70%;
+                width: 100%;
                 box-sizing: border-box;
             }}
             .plot-container {{
