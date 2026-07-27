@@ -56,7 +56,12 @@ _location = None
 
 
 def _initialize_config():
-    """Initialize configuration - runs once per request when PyWPS is ready"""
+    """Initialize configuration - runs once per request when PyWPS is ready
+
+    NOTE: this function is duplicated verbatim in shoreline_getprofile.py.
+    Both copies should be replaced with a call to processes/db.py:get_engine()
+    and processes/utils.py (to be created) for _abspath/_location.
+    """
     global _config_initialized, _engine, _abspath, _location
 
     if _config_initialized:
@@ -73,7 +78,7 @@ def _initialize_config():
     # Set paths - use relative paths from project root
     if os.name == "nt":
         _abspath = os.path.join(project_root, "data")
-        _location = "localhost:5000"
+        _location = "http://localhost:5000"
 
     else:
         _abspath = os.path.join(project_root, "data")

@@ -51,7 +51,12 @@ _location = None
 
 
 def _initialize_config():
-    """Initialize configuration - runs once per request when PyWPS is ready"""
+    """Initialize configuration - runs once per request when PyWPS is ready
+
+    NOTE: this function is duplicated verbatim in shoreline_getstats.py.
+    Both copies should be replaced with a call to processes/db.py:get_engine()
+    and processes/utils.py (to be created) for _abspath/_location.
+    """
     global _config_initialized, _engine, _abspath, _location
 
     if _config_initialized:
@@ -68,7 +73,7 @@ def _initialize_config():
     # Set paths - use relative paths from project root
     if os.name == "nt":
         _abspath = os.path.join(project_root, "data")
-        _location = "localhost:5000"
+        _location = "http://localhost:5000"
 
     else:
         _abspath = os.path.join(project_root, "data")
@@ -393,63 +398,6 @@ def assignmetadata(html, dfm):
 
         #html_info += "<br>"
 
-    html_info += """
-    <button id="feedback-toggle" class="feedback-button">Submit Feedback</button>
-    """
-
-    # --- Collapsible Feedback Form ---
-    html_info += """
-    <div id="feedback-form" class="feedback-collapsible" style="display:none; margin-top:10px;">
-        <!-- Question 1: Reliability -->
-        <table class="meta-table feedback-table">
-            <tr><th colspan="2">Assessment</th></tr>
-            <tr><td colspan="2">In your judgement, how reliable are the data points (transect time series) as an indicator of shoreline change at this location?<br>
-                <label><input type="radio" name="reliability" value="Reliable / representative"> Reliable / representative</label><br>
-                <label><input type="radio" name="reliability" value="Questionable (interpret with caution)"> Questionable (interpret with caution)</label><br>
-                <label><input type="radio" name="reliability" value="Not reliable"> Not reliable</label>
-            </td></tr>
-        </table>
-
-        <!-- Question 2: Only shows if Questionable is selected -->
-        <div id="questionable-options" class="feedback-dropdown" style="display:none; margin-top:0px;">
-            <table class="meta-table feedback-table">
-                <tr><th colspan="2">Specify cause(s)</th></tr>
-                <tr><td colspan="2">Could you select a possible technical or contextual cause(s) out of the list below?<br>
-                    <label><input type="checkbox" name="details" value="Some data points are not regarded as outliers"> Some data points are not regarded as outliers</label><br>
-                    <label><input type="checkbox" name="details" value="Time series signal is not complete"> Time series signal is not complete</label><br>
-                    <label><input type="checkbox" name="details" value="Coast is morphologically complex"> Coast is morphologically complex</label><br>
-                    <label><input type="checkbox" name="details" value="Human intervention likely"> Human intervention likely</label><br>
-                    <label><input type="checkbox" name="details" value="Other:"> Other:</label>
-                    <div id="other-box" style="display:none; margin-top:5px;">
-                        <input type="text" id="other-text" placeholder="Please specify">
-                    </div>
-                </td></tr>
-            </table>
-        </div>
-
-        <!-- Hidden fields for metadata and IP -->
-        <input type="hidden" id="transect-id">
-        <input type="hidden" id="center-lon">
-        <input type="hidden" id="center-lat">
-        <input type="hidden" id="country">
-        <input type="hidden" id="continent">
-        <input type="hidden" id="shore-type">
-        <input type="hidden" id="change-rate">
-        <input type="hidden" id="std">
-        <input type="hidden" id="classification">
-        <input type="hidden" id="r2">
-        <input type="hidden" id="ip-address">
-        <input type="hidden" id="ip-org">
-        <input type="hidden" id="ip-as">
-        <input type="hidden" id="ip-country">
-        <input type="hidden" id="ip-city">
-        <input type="hidden" id="ip-lon">
-        <input type="hidden" id="ip-lat">
-        
-        <button id="feedback-submit" class="feedback-button" onclick="submitFeedback()">Submit Feedback</button>
-    </div>
-    """
-
     html_info += "</div>"
 
     # --- Read the Plotly HTML ---
@@ -477,10 +425,10 @@ def assignmetadata(html, dfm):
             .container {{
                 display: flex;
                 flex-direction: row;
-                align-items: stretch
+                align-items: stretch;
                 gap: 0px;
                 padding: 5px;
-                width: 70%;
+                width: 100%;
                 box-sizing: border-box;
             }}
             .plot-container {{
@@ -578,51 +526,6 @@ def assignmetadata(html, dfm):
                 margin-top: 8px;
                 font-size: 14px;
             }}
-            .feedback-container {{
-                margin-top: 5px;
-                text-align: center;
-            }}
-            .feedback-button {{
-                margin-top: 10px;
-                background-color: #0056b3;
-                color: white;
-                border: none;
-                padding: 8px 14px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 14px;
-            }}
-            .feedback-button:hover {{
-                background-color: #0056b3;
-            }}
-            .feedback-box textarea {{
-                width: 100%;
-                height: 70px;
-                resize: vertical;
-                padding: 6px;
-                font-size: 13px;
-            }}
-            .feedback-box button {{
-                margin-top: 5px;
-                padding: 6px 10px;
-                font-size: 13px;
-            }}
-            .feedback-box {{
-                overflow-y: auto;
-                transition: max-height 0.3s ease;
-            }}
-            .feedback-box.active {{
-                max-height: 100%;
-            }}  
-            #feedback-form .feedback-button {{
-                width: 100%;
-                display: block;
-                margin-top: 10px;
-            }}
-            #feedback-submit.submitted {{
-                background-color: #28a745;  /* green */
-                color: white;
-            }}
         </style>
     </head>
     <body>
@@ -667,167 +570,6 @@ def assignmetadata(html, dfm):
                 lockedPlotHeight = null;  // reset on real resize
                 syncInfoHeight();
             }});
-
-            // Toggle feedback form
-            const toggleButton = document.getElementById("feedback-toggle");
-            const form = document.getElementById("feedback-form");
-
-            toggleButton.addEventListener("click", function () {{
-
-                const isOpen = form.style.display === "block";
-
-                if (isOpen) {{
-                    // CLOSE
-                    form.style.display = "none";
-                    toggleButton.textContent = "Submit Feedback";
-                }} else {{
-                    // OPEN
-                    form.style.display = "block";
-                    toggleButton.textContent = "Close Feedback";
-                }}
-
-                // keep container height locked to plot
-                setTimeout(syncInfoHeight, 50);
-            }});
-
-            // Show Question 2 only if Questionable selected
-            document.addEventListener("change", function(e) {{
-                if (e.target.name === "reliability") {{
-                    const showSecond = e.target.value.includes("Questionable");
-                    document.getElementById("questionable-options").style.display = showSecond ? "block" : "none";
-                }}
-                if (e.target.name === "details" && e.target.value === "Other:") {{
-                    document.getElementById("other-box").style.display = e.target.checked ? "block" : "none";
-                }}
-            }});
-
-            // Fill hidden metadata field for potential use in form submission
-            document.getElementById("transect-id").value = "{dfm['transect_id'].values[0]}";
-            document.getElementById("center-lon").value = "{dfm['center_lon'].values[0]}";
-            document.getElementById("center-lat").value = "{dfm['center_lat'].values[0]}";
-            document.getElementById("country").value = "{dfm['country'].values[0]}";
-            document.getElementById("continent").value = "{dfm['continent'].values[0]}";
-            document.getElementById("shore-type").value = "{dfm['class_shore_type'].values[0]}";
-            document.getElementById("change-rate").value = "{dfm['sds_change_rate'].values[0]}";
-            document.getElementById("std").value = "{dfm['sds_change_rate_std_err'].values[0]}";
-            document.getElementById("classification").value = "{change_class}";
-            document.getElementById("r2").value = "{dfm['sds_r_squared'].values[0]}";
-
-            // Get IP and geolocation
-            fetch("http://ip-api.com/json/")
-                //.then(r => r.json())
-                //.then(d => console.log(d));
-                .then(response => response.json())
-                .then(data => {{
-                    document.getElementById("ip-address").value = data.query || "";
-                    document.getElementById("ip-org").value = data.org || "";
-                    document.getElementById("ip-as").value = data.as || "";
-                    document.getElementById("ip-country").value = data.country || "";
-                    document.getElementById("ip-city").value = data.city || "";
-                    document.getElementById("ip-lat").value = data.lat || "";
-                    document.getElementById("ip-lon").value = data.lon || "";
-                }})
-                .catch(error => {{
-                    console.log("Geolocation lookup failed:", error);
-                }});
-            
-            // --- Submit to Google Form ---
-            function submitFeedback() {{
-            
-                const submitBtn = document.getElementById("feedback-submit");
-            
-                // 🚫 Block repeated clicks
-                if (submitBtn.disabled) return;
-
-                submitBtn.disabled = true;
-
-                const selected = document.querySelector('input[name="reliability"]:checked');
-
-                if (!selected) {{
-                    alert("Please select an assessment option.");
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Submit Feedback";
-                    return;
-                }}
-
-                const formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdYunKIvdp2EjryKVTnXTFsTINsI_DUKQX7FmVpC6e7sHbx2Q/formResponse";
-                const formData = new FormData();
-
-                // Question 1
-                formData.append("entry.1968241590", selected.value);
-
-                // If Questionable → require at least one checkbox
-                if (selected.value.includes("Questionable")) {{
-
-                    const checkboxes = document.querySelectorAll('input[name="details"]:checked');
-
-                    if (checkboxes.length === 0) {{
-                        alert("Please select at least one reason.");
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = "Submit Feedback";
-                        return;
-                    }}
-
-                    let isValid = true;   // <-- control flag
-
-                    checkboxes.forEach(cb => {{
-
-                        if (cb.value === "Other:") {{
-
-                            const otherText = document.getElementById("other-text").value.trim();
-
-                            if (otherText === "") {{
-                                alert("Please specify the 'Other' reason.");
-                                isValid = false;
-                                return;
-                            }}
-
-                            formData.append("entry.467815806", "__other_option__");
-                            formData.append("entry.467815806.other_option_response", otherText);
-
-                        }} else {{
-                            formData.append("entry.467815806", cb.value);
-                        }}
-                    }});
-
-                    // 🚨 Stop submission completely if invalid
-                    if (!isValid) {{
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = "Submit Feedback";
-                        return;
-                    }}
-                }}
-
-                // append additional hidden metadata fields if needed
-                formData.append("entry.2142836349", document.getElementById("transect-id").value); // Hidden transect ID
-                formData.append("entry.51855834", document.getElementById("center-lon").value); // Hidden center longitude
-                formData.append("entry.344849078", document.getElementById("center-lat").value); // Hidden center latitude
-                formData.append("entry.659486804", document.getElementById("country").value); // Hidden country
-                formData.append("entry.1029413259", document.getElementById("continent").value); // Hidden continent
-                formData.append("entry.346152434", document.getElementById("shore-type").value); // Hidden shore type
-                formData.append("entry.934577245", document.getElementById("change-rate").value); // Hidden change rate
-                formData.append("entry.2092884113", document.getElementById("std").value); // Hidden standard deviation
-                formData.append("entry.357345898", document.getElementById("classification").value); // Hidden classification
-                formData.append("entry.1030618903", document.getElementById("r2").value); // Hidden R-squared
-                formData.append("entry.290909900", document.getElementById("ip-address").value); // Hidden IP address
-                formData.append("entry.2001207827", document.getElementById("ip-org").value); // Hidden IP organization
-                formData.append("entry.582825405", document.getElementById("ip-as").value); // Hidden IP AS
-                formData.append("entry.113173912", document.getElementById("ip-country").value); // Hidden IP country
-                formData.append("entry.2064210735", document.getElementById("ip-city").value); // Hidden IP city
-                formData.append("entry.230829187", document.getElementById("ip-lon").value); // Hidden IP longitude
-                formData.append("entry.851005277", document.getElementById("ip-lat").value); // Hidden IP latitude
-
-                fetch(formUrl, {{
-                    method: "POST",
-                    mode: "no-cors",
-                    body: formData
-                }});
-
-                alert("Thank you for your submission!");
-
-                submitBtn.textContent = "Submitted ✓";
-                submitBtn.classList.add("submitted");
-            }}
 
         </script>
     </body>
