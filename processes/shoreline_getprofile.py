@@ -41,6 +41,12 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import logging
 
+try:
+    from .classification import classify_change_rate
+except ImportError:
+    # cleanup.py imports this module as a top-level script, outside the package
+    from classification import classify_change_rate
+
 logger = logging.getLogger("PYWPS")
 
 # Global variables to cache configuration
@@ -337,24 +343,7 @@ def assignmetadata(html, dfm):
     for _, row in dfm.iterrows():
         # classify change rate
         rate = row["sds_change_rate"]
-        if rate < -5:
-            change_class = "Extreme erosion (< -5 m/yr)"
-        elif rate < -3.0 and rate >= -5.0:
-            change_class = "Severe erosion (-3.0 to -5.0 m/yr)"
-        elif rate < -1.0 and rate >= -3.0:
-            change_class = "Intense erosion (-1.0 to -3.0 m/yr)"
-        elif rate < -0.4 and rate >= -1.0:
-            change_class = "Erosion (-0.4 to -1.0 m/yr)"
-        elif rate >= -0.4 and rate <= 0.4:
-            change_class = "Stable (-0.4 to 0.4 m/yr)"
-        elif rate > 0.4 and rate <= 1.0:
-            change_class = "Accretion (0.4 to 1.0 m/yr)"
-        elif rate > 1.0 and rate <= 3.0:
-            change_class = "Intense accretion (1.0 to 3.0 m/yr)"
-        elif rate > 3.0 and rate <= 5.0:
-            change_class = "Severe accretion (3.0 to 5.0 m/yr)"
-        elif rate > 5:
-            change_class = "Extreme accretion (> 5 m/yr)"
+        change_class = classify_change_rate(rate)
 
         html_info += """
         <table class="meta-table">

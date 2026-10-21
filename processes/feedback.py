@@ -8,17 +8,14 @@ POST /feedback body (JSON):
   reliability         str   required  One of VALID_RELIABILITY
   details             list  optional  Cause checkboxes (required if Questionable)
   other_text          str   optional  Free text when 'Other:' is in details
-  transect_id         str   optional
+  transect_id         str   optional  Must match gctr.transect_id for profileid
   profileid           int   optional  gctr.index
-  center_lon          float optional
-  center_lat          float optional
-  country             str   optional
-  continent           str   optional
-  shore_type          str   optional
-  change_rate         float optional
-  change_rate_std_err float optional
-  classification      str   optional
-  r_squared           float optional
+
+Transect metadata (center_lon, center_lat, country, continent, shore_type,
+change_rate, change_rate_std_err, classification, r_squared) is looked up
+server-side from gctr by profileid; any values sent in the body are ignored.
+If profileid is missing, unknown, or does not match transect_id, the feedback
+is stored without metadata and a warning is logged.
 
 Client IP and User-Agent are captured server-side; do NOT send them in the body.
 """
@@ -28,6 +25,7 @@ import logging
 from flask import Blueprint, abort, jsonify, request
 from sqlalchemy import text
 
+from .classification import classify_change_rate
 from .client_ip import get_client_ip
 from .db import get_engine
 
@@ -40,6 +38,37 @@ VALID_RELIABILITY = {
     "Questionable (interpret with caution)",
     "Not reliable",
 }
+
+_METADATA_SQL = text(
+    """
+    SELECT
+        g.transect_id,
+        ST_X(ST_Centroid(g.geometry)) AS center_lon,
+        ST_Y(ST_Centroid(g.geometry)) AS center_lat,
+        c.common_country_name AS country,
+        ct.continent,
+        g.class_shore_type AS shore_type,
+        g.sds_change_rate AS change_rate,
+        g.sds_change_rate_std_err AS change_rate_std_err,
+        g.sds_r_squared AS r_squared
+    FROM public.gctr g
+    LEFT JOIN public.country c ON c.idccn = g.idccn
+    LEFT JOIN public.continent ct ON ct.idcnt = g.idcnt
+    WHERE g.index = :profileid
+    """
+)
+
+_METADATA_FIELDS = (
+    "center_lon",
+    "center_lat",
+    "country",
+    "continent",
+    "shore_type",
+    "change_rate",
+    "change_rate_std_err",
+    "classification",
+    "r_squared",
+)
 
 _INSERT_SQL = text(
     """
@@ -89,18 +118,42 @@ def _validate(body: dict) -> tuple[str, list, str | None]:
     return reliability, details, other_text
 
 
+def _lookup_metadata(conn, profileid, transect_id) -> dict:
+    """Return transect metadata from gctr, or all-None if it cannot be verified."""
+    empty = dict.fromkeys(_METADATA_FIELDS)
+
+    if profileid is None:
+        logger.warning("feedback: no profileid; storing without metadata")
+        return empty
+
+    found = conn.execute(_METADATA_SQL, {"profileid": profileid}).mappings().first()
+    if found is None:
+        logger.warning(
+            "feedback: profileid %s not found in gctr; storing without metadata",
+            profileid,
+        )
+        return empty
+
+    if found["transect_id"] != transect_id:
+        logger.warning(
+            "feedback: transect_id mismatch for profileid %s (sent %r, gctr %r); "
+            "storing without metadata",
+            profileid,
+            transect_id,
+            found["transect_id"],
+        )
+        return empty
+
+    metadata = {key: found[key] for key in _METADATA_FIELDS if key != "classification"}
+    metadata["classification"] = classify_change_rate(found["change_rate"])
+    return metadata
+
+
 @feedback_bp.post("/feedback")
 def submit_feedback():
     """Accept a profile reliability feedback submission and persist it."""
     body = request.get_json(silent=True) or {}
     reliability, details, other_text = _validate(body)
-
-    def _float(key):
-        v = body.get(key)
-        try:
-            return float(v) if v is not None else None
-        except (TypeError, ValueError):
-            return None
 
     def _int(key):
         v = body.get(key)
@@ -115,21 +168,13 @@ def submit_feedback():
         "other_text": other_text,
         "transect_id": body.get("transect_id") or None,
         "profileid": _int("profileid"),
-        "center_lon": _float("center_lon"),
-        "center_lat": _float("center_lat"),
-        "country": body.get("country") or None,
-        "continent": body.get("continent") or None,
-        "shore_type": body.get("shore_type") or None,
-        "change_rate": _float("change_rate"),
-        "change_rate_std_err": _float("change_rate_std_err"),
-        "classification": body.get("classification") or None,
-        "r_squared": _float("r_squared"),
         "client_ip": get_client_ip(),
         "user_agent": request.headers.get("User-Agent") or None,
     }
 
     try:
         with get_engine().begin() as conn:
+            row.update(_lookup_metadata(conn, row["profileid"], row["transect_id"]))
             conn.execute(_INSERT_SQL, row)
     except Exception as err:
         logger.error("feedback: insert failed: %s", err)
