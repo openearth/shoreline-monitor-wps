@@ -421,8 +421,7 @@ def assignmetadata(html, dfm):
                 box-sizing: border-box;
             }}
             .plot-container {{
-                flex: 3.5;
-                min-width: 65%;
+                flex: 0 0 65%;
                 overflow: hidden;
                 padding: 0;
                 margin: 0;
@@ -473,6 +472,10 @@ def assignmetadata(html, dfm):
             @media (max-width: 900px) {{
                 .container {{
                     flex-direction: column;
+                }}
+                .plot-container {{
+                    flex: 3.5;
+                    min-width: 65%;
                 }}
                 .info-container {{
                     max-width: 100%;
